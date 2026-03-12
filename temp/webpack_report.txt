@@ -1,0 +1,179 @@
+结论先说：app.js 里的 _0x285476 就是标准 webpack 运行时 __webpack_require__。它不是单纯“按模块 ID 取函数执行”，而是整个 bundle 的模块 
+  系统内核，负责 4 件事：模块缓存、模块执行、ESModule 兼容辅助、异步 chunk 加载。                                                       
+                                                                                                                                        
+  核心定义在 app.js:2687 和还原版 app-v5.js:1899。你们的 decrypt_v2.js 也明确把这类 runtime loader 归一化重命名成 __webpack_require__， 
+  见 decrypt_v2.js:855 和 decrypt_v2.js:921。                                                                                           
+                                                                                                                                        
+  1. 启动链                                                                                                                             
+  启动顺序是这样的：                                                                                                                    
+                                                                                                                                        
+  window.webpackJsonp_onlineMuster.push = webpackJsonpCallback                                                                          
+  replay(旧数组里已经 push 进去的 chunk)                                                                                                
+  deferredModules.push([入口模块ID, 依赖chunk...])                                                                                      
+  checkDeferredModules()                                                                                                                
+                                                                                                                                        
+  对应代码在 app.js:2880 和 app-v5.js:2033。                                                                                            
+                                                                                                                                        
+  这里几个变量的真实角色是：                                                                                                            
+                                                                                                                                        
+  - _0x224d7d：模块表 modules                                                                                                           
+  - _0x30551d：模块缓存 installedModules                                                                                                
+  - _0x533df1：JS chunk 状态表 installedChunks                                                                                          
+  - _0x3af7de：CSS chunk 状态表                                                                                                         
+  - _0x243428：延迟执行队列 deferredModules
+  - _0x5387c9：JSONP 回调 webpackJsonpCallback                                                                                          
+  - _0x4730d4：检查依赖是否齐全并执行入口 checkDeferredModules                                                                          
+                                                                                                                                        
+  初始入口被压成：                                                                                                                      
+                                                                                                                                        
+  [0, "vue-runtime", "element-ui", "core", "crypto", "intro", "chunk-vendors"]                                                          
+                                                                                                                                        
+  见 app-v5.js:2037。意思是：                                                                                                           
+                                                                                                                                        
+  - 入口模块 ID 是 0                                                                                                                    
+  - 必须先等这些 chunk 都标记为已加载 (0)                                                                                               
+  - 然后才执行 __webpack_require__(__webpack_require__.s = 0)                                                                           
+                                                                                                                                        
+  2. __webpack_require__ 本体
+  主体很短，但作用最关键，见 app.js:2720 / app-v5.js:1923。                                                                             
+                                                                                                                                        
+  等价伪代码：                                                                                                                          
+                                                                                                                                        
+  function __webpack_require__(moduleId) {                                                                                              
+    if (installedModules[moduleId]) {                                                                                                   
+      return installedModules[moduleId].exports                                                                                         
+    }                                                                                                                                   
+                                                                                                                                        
+    var module = installedModules[moduleId] = {                                                                                         
+      i: moduleId,                                                                                                                      
+      l: false,                                                                                                                         
+      exports: {}                                                                                                                       
+    }                                                                                                                                   
+                                                                                                                                        
+    modules[moduleId].call(module.exports, module, module.exports, __webpack_require__)                                                 
+    module.l = true                                                                                                                     
+    return module.exports                                                                                                               
+  }                                                                                                                                     
+                                                                                                                                        
+  关键点：                                                                                                                              
+                                                                                                                                        
+  - i 是模块 ID                                                                                                                         
+  - l 是 loaded 标记                                                                                                                    
+  - exports 是 CommonJS 导出对象                                                                                                        
+  - 第一次调用才执行模块工厂函数，之后全走缓存                                                                                          
+  - 这就是 webpack 单例模块语义的来源                                                                                                   
+                                                                                                                                        
+  你们在原文件中看到的是：                                                                                                              
+                                                                                                                                        
+  _0x224d7d[id].call(module.exports, module, module.exports, _0x285476)                                                                 
+                                                                                                                                        
+  这就是最典型的 webpack module factory 调用方式。                                                                                      
+                                                                                                                                        
+  3. runtime helper 全部语义                                                                                                            
+  这些挂载方法都在 app.js:2731 / app-v5.js:1931。                                                                                       
+                                                                                                                                        
+  - __webpack_require__.m：模块表本体                                                                                                   
+  - __webpack_require__.c：模块缓存                                                                                                     
+  - __webpack_require__.d(exports, key, getter)：给 exports 定义惰性 getter                                                             
+  - __webpack_require__.r(exports)：把导出标成 ESModule                                                                                 
+  - __webpack_require__.t(value, mode)：构造 namespace object                                                                           
+  - __webpack_require__.n(module)：兼容 default export 读取                                                                             
+  - __webpack_require__.o(obj, key)：hasOwnProperty                                                                                     
+  - __webpack_require__.p：publicPath，这里是 '/'                                                                                       
+  - __webpack_require__.oe(err)：异步错误直接抛出                                                                                       
+  - __webpack_require__.e(chunkId)：异步加载 chunk                                                                                      
+                                                                                                                                        
+  其中最重要的几个：                                                                                                                    
+                                                                                                                                        
+  d：                                                                                                                                   
+                                                                                                                                        
+  - 让 export 变成 getter，而不是一次性拷贝值                                                                                           
+  - 这就是 webpack ESModule live binding 的基础                                                                                         
+                                                                                                                                        
+  r：                                                                                                                                   
+                                                                                                                                        
+  - 打上 __esModule = true                                                                                                              
+  - 如果环境支持，还会挂 Symbol.toStringTag = "Module"                                                                                  
+                                                                                                                                        
+  t(mode)：                                                                                                                             
+                                                                                                                                        
+  - mode & 1：先把参数当模块 ID 去 require                                                                                              
+  - mode & 8：直接返回原值                                                                                                              
+  - mode & 4：如果本来就是 ESModule，直接返回                                                                                           
+  - mode & 2：把对象属性并到 namespace 上                                                                                               
+                                                                                                                                        
+  n(module)：                                                                                                                           
+                                                                                                                                        
+  - 用来兼容 import x from 'cjs-module'                                                                                                 
+  - 返回一个 getter，.a 指向 default 兼容读取器                                                                                         
+                                                                                                                                        
+  4. 异步 chunk / JSONP 工作流                                                                                                          
+  这部分是完整理解这个项目最关键的地方。                                                                                                
+                                                                                                                                        
+  实际 chunk 文件就是标准 JSONP 包装，例如 chunk-vendors.js:1：                                                                         
+                                                                                                                                        
+  (window.webpackJsonp_onlineMuster = window.webpackJsonp_onlineMuster || []).push([                                                    
+    ["chunk-vendors"],                                                                                                                  
+    { ...moreModules... }                                                                                                               
+  ])                                                                                                                                    
+                                                                                                                                        
+  _0x5387c9 / webpackJsonpCallback 的逻辑见 app.js:2687 / app-v5.js:1899：                                                              
+                                                                                                                                        
+  - 取出 chunkIds                                                                                                                       
+  - 把这些 chunk 在 _0x533df1 里标记为 0，表示已加载                                                                                    
+  - 把回调 Promise 的 resolve 收集起来并执行                                                                                            
+  - 把 moreModules 合并进 _0x224d7d                                                                                                     
+  - 把 executeModules 追加进 _0x243428                                                                                                  
+  - 再跑一次 _0x4730d4()，看有没有等待中的入口/延迟模块现在可以执行                                                                     
+                                                                                                                                        
+  所以 __webpack_require__.e(chunkId) 的本质是：                                                                                        
+                                                                                                                                        
+  - CSS 侧：如果该 chunk 有 CSS，就插 <link>                                                                                            
+  - JS 侧：插 <script>                                                                                                                  
+  - 在 _0x533df1[chunkId] 里挂 [resolve, reject, promise]                                                                               
+  - 等远程 chunk 执行 webpackJsonp_onlineMuster.push(...)                                                                               
+  - JSONP 回调把它标记成 0 并 resolve                                                                                                   
+                                                                                                                                        
+  JS chunk 状态表 _0x533df1 的值语义：                                                                                                  
+                                                                                                                                        
+  - 0：已加载                                                                                                                           
+  - [resolve, reject, promise]：加载中                                                                                                  
+  - undefined：未加载 / 加载失败后被清空                                                                                                
+                                                                                                                                        
+  CSS chunk 状态表 _0x3af7de 的值语义：                                                                                                 
+                                                                                                                                        
+  - 0：已加载                                                                                                                           
+  - Promise：加载中                                                                                                                     
+  - undefined：未加载 / 失败                                                                                                            
+
+  业务侧触发点已经很直白，例如路由懒加载见 app-v5.js:332：                                                                              
+                                                                                                                                        
+  Promise.all([                                                                                                                         
+    __webpack_require__.e('element-ui'),                                                                                                
+    __webpack_require__.e('core'),                                                                                                      
+    __webpack_require__.e('echarts'),                                                                                                   
+    __webpack_require__.e('stuStudy')                                                                                                   
+  ]).then(__webpack_require__.bind(null, "ad14"))                                                                                       
+                                                                                                                                        
+  这说明：                                                                                                                              
+                                                                                                                                        
+  - 先确保 4 个 chunk 全部到位                                                                                                          
+  - 然后 require("ad14")                                                                                                                
+  - ad14 是懒加载路由模块 ID                                                                                                            
+                                                                                                                                        
+  5. 对你们逆向最有价值的点                                                                                                             
+                                                                                                                                        
+  - _0x285476 不是孤立函数，必须和 _0x5387c9、_0x4730d4、_0x533df1 一起看，才算“完整工作原理”。                                         
+  - 真正的模块执行入口不是只有 __webpack_require__(id)，还有 chunk 回调往 _0x224d7d 动态注入模块。                                      
+  - 如果你们要做运行时 hook，最佳落点通常是：                                                                                           
+      - __webpack_require__                                                                                                             
+      - __webpack_require__.e                                                                                                           
+      - window.webpackJsonp_onlineMuster.push                                                                                           
+      - _0x224d7d[id] / 模块工厂函数                                                                                                    
+  - dist/app-v5.js 里的 __call_webpack_module 是解密产物，不是原始 webpack 结构，见 app-v5.js:19。原始行为是直接走                      
+    _0x224d7d[id].call(...)。所以分析“原理”应以 source/v2/app.js 为准，dist/app-v5.js 只适合辅助阅读。                                  
+                                                                                                                                        
+  如果你要继续下一步，我建议直接做两件事中的一个：                                                                                      
+                                                                                                                                        
+  1. 我把这套 runtime 还原成一份“无混淆伪源码版”给你。                                                                                  
+  2. 我继续往下追 ad14 这条懒加载链，定位 stuStudy 实际入口模块。

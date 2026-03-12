@@ -1,2205 +1,3173 @@
 const fs = require('fs');
 const path = require('path');
-
-_0x4cb6 = [
-    "Ym/DsFLDti4fwqJeCcKK",
-    "GsKLw4/Dj2APa1EiwrnCunzCucOQwrULQMO2Oww8FCI=",
-    "fsOXwonChQ==",
-    "dxhMOMO7Bg==",
-    "wonCiMKy",
-    "wrLCs30=",
-    "wq/CpGNPQcKc",
-    "wpzDmsOn",
-    "QGnCtAHDp8KYwpM=",
-    "wqHCrMKTACA=",
-    "wp7CgU/Ch8K3",
-    "ADTDssOLwqE=",
-    "wrDDncO6wqHDpQ==",
-    "wo9qwo1oQQ==",
-    "wpzDm8O0woLDoA==",
-    "eyVYFcO3",
-    "w5DDsMKBwqIB",
-    "w79YNFoL",
-    "REXCq8Kjwp0=",
-    "w47DnMKnwq4s",
-    "w71ow77Dgk4=",
-    "w5ELCkEB",
-    "J8OXOMKZAcOx",
-    "BVbChcKJFg==",
-    "wqrCtFPCvkY=",
-    "w5dyw5XDgiY=",
-    "ZcK3wrpowos=",
-    "wpfCg2rCpcKgw7w=",
-    "ODsGeDo=",
-    "w7DCvDfChsOj",
-    "NsOTwqfCncOH",
-    "SMOJXEc=",
-    "JsK3w5XDllk=",
-    "VMOZQUgUwrE=",
-    "w6orDxhm",
-    "JG4SaAc=",
-    "envDpUHDnQ==",
-    "wojDs8OPwq/Dlg==",
-    "wqrCuVVBQA==",
-    "f0jDkGnDiQ==",
-    "bFDDnsKJFA==",
-    "ZxdjGcO3",
-    "ECPCrcOtJw==",
-    "wqY1M8OBwrU=",
-    "w4PDlDXCssKG",
-    "IBDDkMOqwq4=",
-    "ccKBwrQRAQ==",
-    "w4tbE1Y+",
-    "dkDDr8K2Ew==",
-    "w6VJw5jDin0=",
-    "NXHCmsKSNg==",
-    "w7Vww7zDiDc=",
-    "w5nCi8O8e8KI",
-    "HcOGA8KLJw==",
-    "w4bCmw7Cglo=",
-    "w6TDs8KwSCPClAYdwrnDscOBw7rCqjjDl2nClkXDqidDw4nCiQ==",
-    "wp7Do2jDvQ==",
-    "woDDr8KhKVs=",
-    "w6LCv3ghw44=",
-    "w7fCkjXCu3s=",
-    "w7tWw57Dvxs=",
-    "5Lic5pSl5o6F6Iex5Yiw5pO35pWE",
-    "MW7CvsKHdw3CnMONw78=",
-    "w7DCriHCnMO9",
-    "w7x9w7HDtCI=",
-    "5ZOs6K6p6LGO55WI6ICW57mP5p+B",
-    "w4d+O1Qw",
-    "5pSc5o+D6ISS5Yqk5pGh5pW9",
-    "QcKxwrxqwo4=",
-    "McKkw4XDmFI=",
-    "cBd5PsOu",
-    "BnvDn8Kqw5/DmsK8ZcOTwphvw6ZVw70ldcKh",
-    "w5bCrcO/bsKe",
-    "UMOBwoPCu8KBGQ7CkMKy",
-    "ckdVdcOGwok=",
-    "w7ovAlgdwoIabA==",
-    "wo5SwpNCa8OcHMOywqZFW2/DpsOiw4o/Y8O8VlrDihxHAMOfIDrCmcKXwr/CjsKowpJQfzJXBMKQw6HDi8KXwpQMWVtBw4PCt8OK",
-    "amDCp8KhwofDlMOIfcKnwqcaw5QHw5hSaMOAMQnDnsK+wowFwpAXacKkwr3DsRUYVyzCt8KFQMOgBg==",
-    "DyzCoMOSFA==",
-    "LTwZUQo=",
-    "GDfChsOLCQ==",
-    "wrtcwpF9bA==",
-    "wptDwohObg==",
-    "wphVVh0v",
-    "w7NPI1LCgw==",
-    "esOPVX4X",
-    "fSLCuhfDuw==",
-    "w47Dk8KOWwM=",
-    "TQdsKMOv",
-    "RDVuPcO6",
-    "w67CqA7CqVc=",
-    "w6PDujjDocKYJldqw6w=",
-    "woXCjsK2OSzDvkkcwqfCsQHDmS7DgsKHwok=",
-    "wqvCssKaQAEjEcOOD8Kcw5lAw67CnsKPw6R2UhFBSBgfFcKrwobCqSw1wq7Dq2XDqcKMw6LCk8KwW8K8N8OLwobCnsOVb8Osd8ORcmp+dH/CrwF9ByrCiMKvw44Vw7IE",
-    "TsK7wprCrQ==",
-    "cmLDpXLDtg==",
-    "ZcOkwo3Dsls=",
-    "w6w2DUI7wooBZzI=",
-    "CcKmw43Dv2A=",
-    "w7XCtnkeNGU9w7trw7Ae",
-    "wqU0LcOSwrE=",
-    "CzPCkMOwNA==",
-    "w5ZUKsKjQR8/w4jCv8Kmw4tMw5t+wpTCjQ4=",
-    "woVddcK4FBE=",
-    "UcKKwoMYPQ==",
-    "c2fDoMKZIw==",
-    "eR7DuMOkVgEifHosw4DDklY=",
-    "w5ViCHbCjA==",
-    "wpZIfj0jCMKJ",
-    "5pKV5paC6L+05bqJ5pWZ5YyB77yJ772H",
-    "w6/CpDXCmV0=",
-    "Y27CrMKHwpg=",
-    "TcO3wqvCv8KD",
-    "PHYufTo=",
-    "ARLDk8OkwqluAQ==",
-    "YXvDgMKXPA==",
-    "w7hZNHvCjA==",
-    "woDCtETClXfClQ==",
-    "BcKBwpfCrMKIFxLCkMKlwo8=",
-    "OcOxP8KCKgJ6OFc=",
-    "w4TDnsKfUT4=",
-    "wqYZHcOBwoU=",
-    "Gy7DrcOkwo8=",
-    "w5pARzAzJA==",
-    "a8KcJcKKFMOtDFfDgTXCjS0=",
-    "P1Uybh8=",
-    "SMOzRmA6",
-    "wqvDu8OUwoDDpQ==",
-    "fg41VwfChwsOIUPCusKTw7/CksK8wrrCjMO/TsOVw6HCjATCqMOuw6F/R8KtH8O+wrwsw6Q2w54cWcKGKRVgfsKoITvDt8KFw41JHsKOwpHCtybDuhU=",
-    "OmnDp8OMwrEHNwbDhMOaw6gR",
-    "w53CpiLChSLDmMKOwrofw5jCszjDksOPG8KTacOQKcOEIsK1fxjDnBBQBcOCwr5tScOODcOZw7PCtAnDhcOuKcKoQVHDpsOHRcKBK2PCl8KNJsKrWFrCtGNEAcOvw6gcBixRw7ohw6/CicKtc8Ocfwk8wqxMcsKkwopYDGodwpfCkWYHw6Ipw6wpdm/Cl8Kkwr/CiMOIw7cqFcO+ZBFcG8KNwrDCpcKbXsK4wpbDq8KJLUHDrcOAw6vCusKFw4kzw63Drh9TLArCp8KAfMOGwqU/wrprw4XCh8KEwo5jwplbSMOWK8O8BgPDpsKJwrTChAfCvQF3FjZ5fcKqw6whw6nDo0PDo8KoO8OyDsKLwqkpwoUtwpdRw6jDi8OowrPCr8KMGD7Du8O+WcKKw5dUwpbCv3LCpcOxw7EoNg==",
-    "w6XCsSzCgEs=",
-    "MyMjeAk=",
-    "esOYwqXDhkU=",
-    "wrzCiDbCunY=",
-    "WsKmwrN+wrg=",
-    "DMOswqTCmMO4",
-    "wqdLwqBZUQ==",
-    "wofDs8OUwrvDug==",
-    "GTnDjcOwwqI=",
-    "cwTCugHDmg==",
-    "wq1eVcKWMg==",
-    "RMOfwpfCssKe",
-    "R2PDo8KzHA==",
-    "wpDCuVg8Cw==",
-    "CHPCh8KTPw==",
-    "wr/Cg37CmMKl",
-    "YFnDp0zDnw==",
-    "w4bClMO6w57Dtw==",
-    "w7rCuGUHw78=",
-    "aD7CvAbDjg==",
-    "wrHCkF98Qg==",
-    "H8KTSwbDlQ==",
-    "w6zDssKGwqgi",
-    "csKdwrDCrcKq",
-    "wpzDlsKDDEM=",
-    "BsO5IsKbKw==",
-    "fn3CuMKDwr8=",
-    "woPDrMO6wo3Dog==",
-    "w5bCnF8Qw78=",
-    "CcO8MsKpFg==",
-    "wo3CqmEyLg==",
-    "AMOrPcKZPA==",
-    "ZXjDjmrDkw==",
-    "w5rClSnChVM=",
-    "w69vElPCiw==",
-    "wqFuVMK9GA==",
-    "cMOzZ1ox",
-    "w5fChgLCmcOZ",
-    "Gw/Dm8OJwo0=",
-    "NlTCmMKjIQ==",
-    "w5LCniPCm8OU",
-    "WW/DlEjDlA==",
-    "w7rDkcKzwqE1",
-    "w6vCu0sGw7w=",
-    "wr3DmsOEwq5qw7jCgUzDmcOVXMOU",
-    "E3syUBs=",
-    "wqrCo1B9aA==",
-    "w6zCkCfCpF4=",
-    "wqDCk8KRLBA=",
-    "NsO8woDCpsOe",
-    "DcKLw5vDjV4=",
-    "w6vCjwnColk=",
-    "H8OFJ8KxBw==",
-    "exd+J8O8",
-    "w5how7TDhnQ=",
-    "w71aw5jDsEU=",
-    "RX3DtVTDqg==",
-    "BgjDksOuwrA=",
-    "JsO7OsKdLgVw",
-    "SFRKaMOy",
-    "f8O6wpHDrls=",
-    "w7LCpCYmw5U=",
-    "IHDCrsKiL8KBw5oSw7tr",
-    "wobDjcOJwrnDvA==",
-    "woHCqFHCh8K3",
-    "cMO3wqHCiMK2",
-    "KsOCJsKSDA==",
-    "PcO1MMKhGA==",
-    "I8O1wrPCgcON",
-    "wqtiZwgU",
-    "woUKI8OWwqQ=",
-    "w7t3w6jDlSE=",
-    "w7DCnsOCw4PDoQ==",
-    "w7Rnw6zDr28=",
-    "e8O5wonDgHY=",
-    "w4/CiBLCtFE=",
-    "wovCp0EYGw==",
-    "wonCvljCgEE=",
-    "w5nCky7CosOg",
-    "w7NvEn86",
-    "woBNZsKaHQZhw5HDo8Kuwo9ywpdWw4HClnYdUH8=",
-    "VsOrwpHCq8KJ",
-    "LMKSw4DDlQ==",
-    "w6Z0w7fDqw==",
-    "w4zDu8Kz",
-    "JMK2YzjDjw==",
-    "GcOEwqTCrMOi",
-    "YMOlwpo=",
-    "PMKvTCDDug==",
-    "bcKBwoTCkMKk",
-    "w7R1w7zDpBpJwr0=",
-    "wpfCiWM=",
-    "JVIySA8=",
-    "wo4dCsOXwqQ=",
-    "OcO8wqHCpsOI",
-    "w6cpPgNr",
-    "Dx7DlcOXwpc=",
-    "dl/CvcKvwo4=",
-    "w7A/AlwdwoM=",
-    "w6sjJCx1",
-    "w7rCn8Obw6rDhw==",
-    "ZUbDlFTDoQ==",
-    "W8KpwpI/DA==",
-    "ScOKwonCucKTGA==",
-    "wqrDkMOxwr3Dkw==",
-    "WjfCuwfDvg==",
-    "w5BHHQ==",
-    "NUQ/Sws=",
-    "w6vCgBMg",
-    "LRDCusO3Fg==",
-    "cBVIOsOuAC9HfQ==",
-    "K8Kfw5PDgg==",
-    "w4VlPlI6",
-    "aFdZc8OJ",
-    "w7LCkMOBw6DDhg==",
-    "Q8Kcwqc+Kw==",
-    "w7nDuMKmwpEq",
-    "w67CgRI=",
-    "DsKZw4nDhnA=",
-    "wqAXLMOuwos=",
-    "w5XCvQMkw4E=",
-    "enDCi8KCwpg=",
-    "CS0vajc=",
-    "wp9sXcKOIA==",
-    "w51yMVYrwo4=",
-    "wp7Cil7CqcKg",
-    "PUQzWRjCig==",
-    "w6bCrVoow7Y=",
-    "wpp+Xwos",
-    "HWYJch4=",
-    "woVeVsKZCw==",
-    "VsOfwovCt8KT",
-    "w4LDsMKWwqcD",
-    "w6nDnBXCo8K3",
-    "wqBNZAkg",
-    "CxQBTjA=",
-    "ekHCp8KSwpo=",
-    "wpTDscKnGWJmXcKUdMOA",
-    "w40qCWs5",
-    "CkjCpcKYAQ==",
-    "wrnDjMOpwoBv",
-    "KRDChcO0Kw==",
-    "wqLCjU7Cl8Ki",
-    "OMO7JMKWOw4=",
-    "XEjCvsKywrA=",
-    "w4tGw6bDvmg=",
-    "PMOFP8KEAg==",
-    "wr7CqF3CkMKd",
-    "wolmUMKOEw==",
-    "KsK6w6PDqWQ=",
-    "bGjDn8KDJw==",
-    "XMKWwr8lIw==",
-    "CMONwojCvsOm",
-    "SMOgwrfCusK+",
-    "CQIlWzc=",
-    "w4vCvSnCrsOZ",
-    "dsKMwqFewoU=",
-    "wpnDl8KEOkM=",
-    "wrjCrkVpYQ==",
-    "eQhFOMOqHA==",
-    "w4sJGlAT",
-    "FWUVZjw=",
-    "wrbDu8OLwpDDpw==",
-    "wpHCsFImOQ==",
-    "Dw7DjMOtwoc=",
-    "wotNfMK4BQs=",
-    "fW/DqnzDrDI=",
-    "w6vCgBEqw4NCAA==",
-    "w7Zqw6DDm0g=",
-    "wrjDocKoE1A=",
-    "w6jDmQLCm8KH",
-    "ScKKwrtdwq4=",
-    "QsO0bH4C",
-    "fcKVwqEfLcOHLQ==",
-    "McOyEMKaOw==",
-    "wrZAaBMi",
-    "a3zDrsKePT7Dig==",
-    "cmPDjXXDkQ==",
-    "w5TDucKiwrQE",
-    "woRBW8KxOA==",
-    "wrZceAkA",
-    "wopxwqFvdQ==",
-    "wohrwpRAYA==",
-    "AsOkGsK+CA==",
-    "wqljWcKmIA==",
-    "YsOewp7DiFU=",
-    "RVzDkE/DoA==",
-    "wqtFfi8B",
-    "bMK7wrkiCQ==",
-    "YcKjwrl6wrw=",
-    "QEDDv8KCDw==",
-    "PcObKMKcOg==",
-    "wqdQwodcaA==",
-    "w6BkKlUQ",
-    "wpxDYgYa",
-    "QwrCrSTDoQ==",
-    "w6DDjMKfXzQ=",
-    "XSLCpBo=",
-    "w4XDuMK8woAs",
-    "wpJ6UcKoIA==",
-    "N33CvMKk",
-    "w6nDvMKnwq4N",
-    "w7cyJkkk",
-    "woXCl27Cs30=",
-    "wrogN8OLwqc=",
-    "V1LCoMKcwqo=",
-    "wozCukBkSQ==",
-    "bsKRwro6Cg==",
-    "w7R4w6vDoj0=",
-    "w4AENAdY",
-    "HwU8TTk=",
-    "eQJM",
-    "worDksOPwodn",
-    "dcK7wr3CkMKn",
-    "LwfCvMOMDRBz",
-    "wqvDncOYwqs=",
-    "KGYPTDs=",
-    "w5J8GX/CkA==",
-    "VcOjwpHCtMKQ",
-    "DsOIwqbCn8OL",
-    "csKcwqnCjcK/",
-    "w5PCtsOSw7zDgw==",
-    "wp1cwoNfWw==",
-    "d1/DilHDmw==",
-    "w6gwCRVb",
-    "aGloY8Oo",
-    "wq3CrVDCrU8=",
-    "LhDCjMO3Mw==",
-    "w6M2ODl1",
-    "RBhRPsOU",
-    "w6nCh3kow60=",
-    "w6XCiV0Mw74=",
-    "w7bCrRDCh8OL",
-    "NT01bxM=",
-    "G8Kxw4/DoEw=",
-    "ASjDrsOzwrc=",
-    "UmjCgMKlwobDisOr",
-    "XcKAwp7CtcK9",
-    "YcOHwoDCrcK3",
-    "wqfCk8K/KQg=",
-    "GcOKwr7CvMOlwr7Cig==",
-    "Y8KowrYJJw==",
-    "w7nChsOpXsKo",
-    "wrLDh8OxwpJn",
-    "w5PDt8KNQS0=",
-    "w4JnM1gr",
-    "T8OdXUE=",
-    "wobCtHLClg==",
-    "wpPDvMKkHkY=",
-    "w6vCjyLCsHc=",
-    "M8K7QivDiHDCiHTDlQ==",
-    "w5nCuDLCu8Oc",
-    "OsKsRg==",
-    "fcOWwoDCmMK1",
-    "UsO+bUUC",
-    "w6rChxEq",
-    "wrrDmMObwq9Q",
-    "w6DCjHwPw5Y=",
-    "PcKWUDvDkA==",
-    "w4XCtsO5Y8K4",
-    "wrFiwoNqSw==",
-    "I3syURY=",
-    "CMO/wr/CoMOw",
-    "O8K6ahjDjA==",
-    "w48eOnMe",
-    "LsKVw7LDvE0=",
-    "bWhFR8OP",
-    "w4N4w77Duk8=",
-    "EG7Cp8KbCg==",
-    "wq3Dl8KAB3Y=",
-    "wqDCjX5jdQ==",
-    "W2PCgcK8woE=",
-    "fW/Do2rDiQ==",
-    "wpzCqnjCkGI=",
-    "Kw3CpsOrCxFz",
-    "w4vCqzLCug==",
-    "w7Fzw7zDthlJwqE=",
-    "woMCHQ==",
-    "wpHDkMOtwrvDmA1X",
-    "VWLCjMKjwo4=",
-    "P8KRw4/Dn3sKYQ==",
-    "f8KCwqckNg==",
-    "wrnCpWlZSMKZwrA=",
-    "worClcK+NQ==",
-    "wpTDtsKoGE5lXA==",
-    "wpfDh8Ogwq3DhxVbwpQ+",
-    "w4vCocOJw4/DhQ==",
-    "Um3Cq8KVwoU=",
-    "w6wZKE8D",
-    "wpvCo8KNGQ4=",
-    "wq3Cs3w=",
-    "w7tyw7vDsQ==",
-    "wrTCnmRlXQ==",
-    "w6DCqn0nw7k=",
-    "w60MAkwx",
-    "wqDCgHFDbg==",
-    "w57CthLCsVM=",
-    "wqTDjcK/Mkw=",
-    "w6zCuhYAw4E=",
-    "wpxKdDci",
-    "w7HCpwTCi3Q=",
-    "wqoeFMOtwrI=",
-    "d8KNwp7Cv8K9",
-    "d8K0wp8iBw==",
-    "QcKUwrDCvMK8",
-    "ITfDp8OWwoE=",
-    "Ay/DmMOywqs=",
-    "wrbDiMO6wpvDkA==",
-    "w55MOHPCrA==",
-    "PMOYAcKTPg==",
-    "QcOFwrbCvMKx",
-    "HcKcw43DiWQKZUZvwqo=",
-    "w4nCusOMw4nDjwHDjw==",
-    "acKQwrLCusKa",
-    "LMKrdj7DiQ==",
-    "XcK/wrEhJg==",
-    "w6XCqk40w4s=",
-    "wo/ClMK/",
-    "fThtG8Ov",
-    "w43DnMKzTRs=",
-    "w6F5w7fDrg==",
-    "MgfDqcOkwrw=",
-    "HRnDpMOq",
-    "w6BFw6jDow==",
-    "U8KHwovCvMK9",
-    "cXfDr8KQ",
-    "QMKnwp1n",
-    "wrhPwpBKdg==",
-    "wpHDq8KCBHY=",
-    "H8OFOcKsOA==",
-    "HsOqwp3CnMOo",
-    "TQjCmj3DqA==",
-    "woBNZsKLGA5p",
-    "wpjCg23Crg==",
-    "VMKawo5UwrU=",
-    "w5vCrzTChMOBNgcvwrAMLA==",
-    "wqjDnMOKwrFd",
-    "QWfDtGPDqQ==",
-    "OUgxcxU=",
-    "w4HDqsKxWDI=",
-    "w7VSw4nDp3A=",
-    "OTDDuA==",
-    "w6vCqnY7w4I=",
-    "VcK2wqIzFA==",
-    "KgIWRzA=",
-    "dkbCu8KPwoQ=",
-    "woHDssKkL1A=",
-    "w7rCvDEZw4E=",
-    "dgVKLcOdGyJNUlY=",
-    "w4/DnsKsZQQ=",
-    "bn3DrQ==",
-    "V3BsRsOt",
-    "dsKfwrI=",
-    "QyHChAzDiQ==",
-    "UMKmwpvCnsKP",
-    "w7jCmDfCh3sHw6c=",
-    "w6NVw77DoA==",
-    "Pz3Do8OpwpA=",
-    "DsOXwqDCmcOc",
-    "N2rCv8KGOg==",
-    "PBHDq8OCwpI=",
-    "cUxJdQ==",
-    "Jy0rRRM=",
-    "w5jChcONw6HDjg==",
-    "V8Knwr/CscK5",
-    "wp3DkcOhwq3DkQ5Awp4lwoTCjhYCUw==",
-    "w4gtA2kk",
-    "OMOZE8KGPA==",
-    "wq/Du8KtL3s=",
-    "wo5NwoFhdw==",
-    "YsKGwptJwp0=",
-    "MjrDq8OowqxZMA==",
-    "w6pNHnPCqw==",
-    "w5ZyK2U2wovDlQ==",
-    "wrzDjcOfwoZFw7XCjVvDtMOOS8Ozw6DDuQPClF1ed8Kh",
-    "w5vCqDPCh8Od",
-    "M3TCrsKp",
-    "w7vDtxLCpA==",
-    "X8Ktwp8=",
-    "QFzDrsKsJg==",
-    "wppHWj8+",
-    "w75zw7U=",
-    "w67CrSjCvsOK",
-    "FsOMwqXClsOk",
-    "wrzCo2lLS8KZwqw=",
-    "wotHdQ==",
-    "wp7CiW3CvEM=",
-    "worCk3IXAA==",
-    "Djk6Szc=",
-    "wr4sGMOTwoU=",
-    "wpUrK8ONwqk=",
-    "w60ILxhZ",
-    "wq/CokttaA==",
-    "cMKpwpIZIA==",
-    "w5DCriTCrcO9",
-    "woTDvMK8P3A=",
-    "YcOyTVcH",
-    "wrnCgcKVKg8=",
-    "w6Fiw7vDjnY=",
-    "wrrDs8OUwpHDtg==",
-    "XmhYRsOn",
-    "VcKwwoDCrMKlw5A=",
-    "wpbDq8KLB24=",
-    "cUBRd8ORwpU=",
-    "FHXCqcKxGA==",
-    "wovCnlZOUg==",
-    "Yi/CkyTDgQ==",
-    "wrJOahYd",
-    "wprClnTCrsKt",
-    "w6HDtDvCmsKK",
-    "woJce8KyFA==",
-    "wpfCksK1Pw==",
-    "w4/ClsOZw47Dlw==",
-    "w67DuRLCssKm",
-    "w5ovKVk5",
-    "woR0wqd6bg==",
-    "w7FXw57Dv1A=",
-    "JjfDsMOL",
-    "w5XCgxMuw48=",
-    "L8KKw4jDgXE=",
-    "U8K8wp7CvA==",
-    "wqjCl8K+Ays=",
-    "CBnDqcO7wqI=",
-    "w5DCjGEvw4M=",
-    "wpfDi8OqwqXDkg==",
-    "w5PDoMK9wokg",
-    "SMOQTlYywrhnOA==",
-    "w5c2CmIa",
-    "wpLCkcKBLi8=",
-    "CMOUwp/CtcOu",
-    "w7kuBVYM",
-    "w4XCl0Em",
-    "OA7CqcOhNhxiZQ==",
-    "wp7Ckm3Cr8Kx",
-    "wo/Cj2nCpw==",
-    "OMOxLQ==",
-    "w7rCkkoaw78=",
-    "VHVVWMOI",
-    "w7PCuRA6w5k=",
-    "wp/Cj3DChMKy",
-    "wppDRzA=",
-    "CMO/McKoNw==",
-    "ZXfDvsKrKgLDhcOFwqc/wrQ=",
-    "PhjDl8Oewr0=",
-    "HRo5UzPCjSvChQ==",
-    "woXCksK0PxHDsw==",
-    "J8OqI8KcKg==",
-    "w5rCp8OBw4HDhQ==",
-    "w4zCusOPw4LDgTzDnlzDvA==",
-    "DcOfwrvChMOG",
-    "O8Kbw5U=",
-    "woNRcMKUIQ==",
-    "Q8KfwocuCA==",
-    "woHCr2rCicK/",
-    "w7vCq0sBw60=",
-    "wojCgX9bfw==",
-    "PSzDj8OIwrU=",
-    "OxbCqcOsEQ4=",
-    "wrzCj0bCkWE=",
-    "w5fCvgXCsMOZ",
-    "IxbCjcO8Ew==",
-    "Yn7DsX/DoQ4Twr1N",
-    "wrHCsMKgKwA=",
-    "w6vChRfClHU=",
-    "w5HDssKAwqAV",
-    "w4bDjcKRwqUs",
-    "wpHDsMKqDmht",
-    "wpfCvcK3LCs=",
-    "wpFSQzA=",
-    "w6Zrw77DhCM=",
-    "worCjF3CtsKj",
-    "NRkqeDM=",
-    "H8OyLMKoPA==",
-    "Q33ChMKfwoU=",
-    "wpJ2YTQh",
-    "bMKWwoEGEw==",
-    "wp99wrBhTg==",
-    "woIACsOvwoU=",
-    "w77CiSHCrsOY",
-    "w5Bfw7PDvwA=",
-    "XcKWwrrCgcKO",
-    "JFQ0Wg==",
-    "w5/CpTXCpsOdICc/",
-    "wo9ywohJUMO+",
-    "acKEwqAvPcO+J8OhHsKxUMOuVMOF",
-    "wqjCpnENLE47wqJ+",
-    "w4XDusKwwqAkw4sa",
-    "LQzCrMOPBQl1aB05wpjDiw==",
-    "WjPCthzDvsOhwoQaw5wta8O8wpHDoQ==",
-    "ICrDtsOY",
-    "w47DqcK5",
-    "wovCunZCdA==",
-    "w4XDkMK/bT0=",
-    "wrbDpsOUwo/Dnw==",
-    "HsK9w4DDlmI=",
-    "RkvDncK8LQ==",
-    "w7/CtU8zw70=",
-    "w4fCvXY1w4s=",
-    "Lw3DmsOewoY=",
-    "w5t6AmnCnw==",
-    "MSUaUCQ=",
-    "dsO4SEE0",
-    "UnVpYcOB",
-    "w5xww5vDuUM=",
-    "aMKFwqXCqMKt",
-    "bsKZwoIvLA==",
-    "wobDlsOUwqzDnw==",
-    "w6zDkxzCkMKi",
-    "wozCrsKRNTc=",
-    "w4lYw4/Dil0=",
-    "w6sLIAla",
-    "cz/ClSzDsA==",
-    "w6goDk4M",
-    "aMOEworCt8Ku",
-    "wrbCjWnCq8Kd",
-    "eW/CicKYwo4=",
-    "w73CjTTCg3w=",
-    "ER44cSg=",
-    "UcKywo9cwqI=",
-    "esO2XWcL",
-    "w6fCuwc4w4M=",
-    "wpXDqcKxO08=",
-    "CEg4RAU=",
-    "w7c0HARm",
-    "w7vChsOKw5TDqA==",
-    "VMOVWnYO",
-    "w7V5w6bDkR9IwqE=",
-    "w7F5w7vDqQ==",
-    "w7VLw5rDoUI=",
-    "dm/DsEvDtykTwqRBB8KI",
-    "w4zCp8OJw57DlA==",
-    "woRnQ8KXJw==",
-    "wpzCg101Fg==",
-    "e0HCpMKGwr4=",
-    "FnAQdCI=",
-    "w74RBXEI",
-    "csO6ZX83",
-    "UMK2wp8bEw==",
-    "w7UTFC9y",
-    "f25WWsOE",
-    "HMOSwofCocOw",
-    "wpttRxY3",
-    "HDHDksOIwqo=",
-    "w5pfLV7CkA==",
-    "dm3Cm8KswoY=",
-    "w6nDqCDCpMKJ",
-    "wrzCvVBEXQ==",
-    "ewvChBrDiw==",
-    "w5DCoiY7w7o=",
-    "w7LDmMKHwpAE",
-    "wrHCt8KLLhk=",
-    "d8OjwrTCqsKm",
-    "UF7DmcKPBA==",
-    "EXnChMKzOA==",
-    "wrtXwrdYWA==",
-    "wrzCqU3Ctnc=",
-    "GcOTHcKdIQ==",
-    "LwXDoMO3wr8=",
-    "wrVJWcK8JQ==",
-    "McK1w67DmHo=",
-    "w447J1g9",
-    "w6/CpTo7w5U=",
-    "w5DCjz4sw68=",
-    "FxjDisOgwoo=",
-    "L8Knai/Dug==",
-    "SsKmwrNtwo4=",
-    "wrt6wq9PTQ==",
-    "w53DvjzCqcKn",
-    "wqfCn2XCknU=",
-    "wonCs1scDA==",
-    "w7TCjzHCv8ON",
-    "wqXDuMKNCHU=",
-    "wrLCj0JraA==",
-    "w7QBBgNH",
-    "w7RRw6jDr0Q=",
-    "wojCoUkwOQ==",
-    "wo3Cn1vCgFI=",
-    "FcKOw5PDqkM=",
-    "PsK7w67DlVA=",
-    "w7ALGwZy",
-    "wqFqXT0v",
-    "wr9wwrJKeA==",
-    "wpzDsMKxAXI=",
-    "UsOpQnon",
-    "wpTCh2XCicKd",
-    "GcOUOMKHAQ==",
-    "egxKFMOX",
-    "dEXDgl7DiA==",
-    "QMOgwqHCm8K3",
-    "w5lnPHXCug==",
-    "woR5wr5hUg==",
-    "wpTDqsKFIE4=",
-    "wopKSMKSOg==",
-    "w7LCkAzCoMOn",
-    "w4fDuRDCs8K2",
-    "SnTDrcKCAA==",
-    "VMKywrnCscKk",
-    "wrrDmcOkwrHDsg==",
-    "w5TDi8KfXzU=",
-    "w5JHw5vDh2k=",
-    "ZcOpwpnDsXk=",
-    "wrLDi8OPwrV/",
-    "wofDjsOIwqfDnw==",
-    "QMKywpRlwrg=",
-    "w7PCpz4nw7I=",
-    "w7QTCm0K",
-    "wp3ChWMqOw==",
-    "WU7CiMKAwoo=",
-    "wqk6CcOuwr4=",
-    "BjXDp8OXwqs=",
-    "wo3DksOjwqBs",
-    "AwnCm8OhAw==",
-    "wr9hwqxPXA==",
-    "PRLCu8O6EA==",
-    "C8KJw4/DgnU=",
-    "H1QTfDU=",
-    "wqLCl3XCrsKX",
-    "fnZofcO1",
-    "Nw3DsMOtwos=",
-    "DMOpIcKlIA==",
-    "w4nCtSTCo1E=",
-    "REnDj3LDnQ==",
-    "EsO8O8KUFg==",
-    "w4dfw5nDrDM=",
-    "w5jCmWkCw7Q=",
-    "cMKiwpA5DA==",
-    "w6bDuDLCi8KL",
-    "wpHCtEHCsMKc",
-    "wrLCtVU+IA==",
-    "RlPCo8K3woo=",
-    "w7t7w5fDhA4=",
-    "JnUQXw8=",
-    "w71ow6HDgH4=",
-    "c21TWMO8",
-    "X2zCoMKfwrE=",
-    "QCDCki/Dsg==",
-    "wozDn8OFwq1I",
-    "w4BFw5jDvkA=",
-    "w5bCtMOtw63DmA==",
-    "wo9pWAY3",
-    "EivCkcO0Dg==",
-    "wqbCs8KfCxs=",
-    "w7wpFAx5",
-    "AmHCpsKACQ==",
-    "wqolPcOqwp4=",
-    "wq9ZdsK5IA==",
-    "w4XCvMOLw4TDpw==",
-    "w4cHCzdw",
-    "w4ZDw6LDhFQ=",
-    "wq4LDMOvwp4=",
-    "Y8OOwrbDhGc=",
-    "wrjCqHfCql8=",
-    "V8O4ZGwo",
-    "ZnXCjcKFwqA=",
-    "S8KmwrgDNQ==",
-    "SldcQ8Os",
-    "wovCnGpiVg==",
-    "Ai3DvMOvwow=",
-    "YcOOX3gX",
-    "TcKCwrYYDQ==",
-    "Q8KCwqUcMw==",
-    "w4Vuw7HDlj8=",
-    "w6XCuDDCg8OZ",
-    "wrNiXCQw",
-    "OQ7DosOSwoE=",
-    "wqXCnmbCgXA=",
-    "w4lYHkjCrg==",
-    "W07DtmPDvg==",
-    "Qz1hDsOn",
-    "CVzCvcKoCg==",
-    "w6dHFWAm",
-    "V8OGXlU5",
-    "MX/CtcKyCw==",
-    "P8OKHcKMMA==",
-    "LcKqw43Djmw=",
-    "YRVgLcOb",
-    "w7PCuhktw4M=",
-    "MhHDjcOYwoA=",
-    "w4BDM1Mn",
-    "w43ChwLCokI=",
-    "w65SO0HCug==",
-    "VsKzwqvCl8Kl",
-    "wrVSU8KuIQ==",
-    "fMOLwo/CkMK9",
-    "dMK4wrJNwro=",
-    "wojCsEZbdw==",
-    "w4bCmSvCnUg=",
-    "wqnCnEXCs8KE",
-    "w4U+BHUz",
-    "TVnDhMK3Ew==",
-    "wpN3fD0Z",
-    "w7R+N2YM",
-    "w7YLPlom",
-    "OzcdUiQ=",
-    "JcOaJsKLAQ==",
-    "fcO+flwE",
-    "w71Iw73DvVM=",
-    "wpTDpMOZwqpO",
-    "w5LCojDCocOa",
-    "fMKOwoplwqs=",
-    "w7x0w6LDsAI=",
-    "G8OSOMKYKA==",
-    "JcOkGMKmGw==",
-    "csOIwqDCpMKo",
-    "w5HChcOmw7TDjg==",
-    "wopQwqZ2Qw==",
-    "w6V7w5DDhwc=",
-    "dWp7XMOi",
-    "w5XDocKcaSY=",
-    "wpPCqUDCjsKT",
-    "w5lYG30Y",
-    "AcOMCcKBGg==",
-    "EsOqwpTCg8ON",
-    "w4InBQNX",
-    "TcOgwqPCksKg",
-    "w6XCp8ODw6HDhA==",
-    "E37ChsKyHQ==",
-    "w5XDqxzCh8KX",
-    "wr8LM8OZwqw=",
-    "QyNoNMOL",
-    "TnZoU8Ox",
-    "JsOPKcKyBA==",
-    "w4Vuw47Do3I=",
-    "wo15e8KyOg==",
-    "w4oUL1A8",
-    "a8O7wrnDjkc=",
-    "w63CtcOkZsKh",
-    "fFFdc8OA",
-    "OcOzwrzCv8O7",
-    "w6pZw6zDm2s=",
-    "PsKIw6fDj20=",
-    "aU/DhkzDgg==",
-    "w7RSMHQx",
-    "cHXCl8K3wp4=",
-    "SMOwWUUX",
-    "YmLDq2w=",
-    "woFDRcK2FA==",
-    "w7oxO1IM",
-    "woREfcKsFCdlw5XDocK1wps=",
-    "w71aA1HCnQ==",
-    "w4FbKVso",
-    "K3HCq8K1",
-    "w7/ConweIQ==",
-    "O8OiwqfCqMOC",
-    "w7vChMO+ZsK4",
-    "OMOGN8KMAQ==",
-    "Gi/DlMO+woY=",
-    "w7LCisOdw77DrQ==",
-    "wq0OFcOswqg=",
-    "wrtFQQsj",
-    "w5/CpiXCtcOcEQc2wrwMNyc=",
-    "w5jCtsOcw7jDiSXDjg==",
-    "JcKEw4vDv1s=",
-    "MsKxw7TDmV0=",
-    "wrbCr2lNU8Kd",
-    "w7xTw4fDsD8=",
-    "w4zDscK6woMxw5c=",
-    "wppKQS8z",
-    "wr3Dj8OIworDtA==",
-    "TiLCozrDo8ObwoA=",
-    "Kw7CrcO5Fil/bSw/woDDmg==",
-    "w45NCUXChsKO",
-    "TcOabVgn",
-    "McKmVRrDkWnChA==",
-    "wqzCi8KTGBs=",
-    "wqtxVikj",
-    "w6vCuQXCvlg=",
-    "w6PCkcO4RsKV",
-    "MH3Cu8KEBcKDw5sYw49r",
-    "S8OLe2Ya",
-    "w555w7jDmmo=",
-    "w5fDosKkwqAq",
-    "woDDr8K2L04=",
-    "IsKHZyPDsg==",
-    "w6vCtsOtw4nDmQ==",
-    "wpfCuHd6Yg==",
-    "KgnDtcOqwro=",
-    "w4fCqCDCqVA=",
-    "w4NBfMKrFBF6w5XDoQ==",
-    "wrfCicKiNzs=",
-    "DMOSKMKlBA==",
-    "w5bCiAjClcOL",
-    "wpBFfAYG",
-    "LVkNbMKUwoENw5Fh",
-    "w6rCmMOXw7Ufw6zDk0LCrMKKRMKEwqHDkVbDhW8LIsK4wqrCu0NcAD3Dv0p7w4xeWsOtw5odwqTCrlfCu8K8LsKfwqHCqXXDngdtOsKEw53DrlsEK8OHQX3CvgrCjlTDk8KcPHDDj8Kbw6TCssKKTxzDqHJiTcODN38swpjDt1zClMOsDjAtDRzCoMK3w47DhF01w4ZDT8OmwpE4w7DCtcKdaMKSM1PCucOZWMO6IF9owrMMwoPDi8OxXVRpQ2t8aBJZw6jDq2t3PWtQw77CkUBGA8KhS8OaWmnDvcKlw6w7w6LDlUsXwp5bwoHCuMOTSDLCiCHCisK3DDgNwpsMw4DCsX/DicK9LsKRSFDCgsKLLjdiw7l7NzHClMO9wqNDJGlPwqfDicOQwoHDhDdtw6Y=",
-    "VMK0wqp1wqo=",
-    "wqdcwr7DtBfDn8KMCsKU",
-    "wrDCmVM7Ew==",
-    "w6nCiSMsw48=",
-    "w6vDoyJMbD9sw6EjwqYPOsKZaSfChA==",
-    "w4QVKgd2w64=",
-    "wrTDisOtwqvDgwhdwpV4wovCkB4WWmplwrHDksKBw6jCiVdd",
-    "IDvCosOS",
-    "a1HDiMK+Eg==",
-    "bcKSwqXCv8Ke",
-    "RS3CvSrDhg==",
-    "w7rCksOsw5rDqA==",
-    "Y8K8woXDt1vCiMKkwoLDq8OBwpYC",
-    "f2bCqMK+woQ=",
-    "w63CuzMHw5E=",
-    "wqTDrcOpwq3DtA==",
-    "VhhiGcOJ",
-    "w6lxJls3",
-    "w7QqBCxH",
-    "w7JtHVfCng==",
-    "w6V0GWcz",
-    "wrRAZh4f",
-    "w7FBw7fDnXE=",
-    "wq3CkFdMQg==",
-    "wpg3KsOdwrg=",
-    "w6o9AXkk",
-    "w7nCgMOvRsKl",
-    "w6ltOFfCpw==",
-    "VcOewqjDgEU=",
-    "wrBPwrFrcw==",
-    "wqfDusOBwq/Dug==",
-    "w5DCiy3CsUU=",
-    "D8KkYyfDiA==",
-    "w4rDlsKYXgI=",
-    "w5jCpcOtdcKx",
-    "wp3CnGZFUQ==",
-    "GjjDkcOHwos=",
-    "JcKVw5vDnGc=",
-    "w7jChcOJw4PDlg==",
-    "wqpFdMK7JQ==",
-    "wqXDusOHwrzDkw==",
-    "worClsKTHxE=",
-    "AcKlewDDkQ==",
-    "w7cVPTFY",
-    "MQXCkMOoJg==",
-    "woBBdiwU",
-    "w4PCtsOEbsKa",
-    "wq7CtcKyDSo=",
-    "LcO1MMKBPA==",
-    "w6Rqw4HDm24=",
-    "Q8KSwoFZwoU=",
-    "wrnCr8KCDS8=",
-    "wrzDmsO7wrRh",
-    "Ohc5SSY=",
-    "wrVvbC8O",
-    "wpLCvWUXNA==",
-    "woLCi0XChsK8",
-    "RcKYwoHCg8KT",
-    "OArCj8OPJg==",
-    "wolOaQsU",
-    "AjzDuMOswrA=",
-    "w7PCtA3Cpmc=",
-    "H8OTBMKyGA==",
-    "wq1HfBA7",
-    "w4LDmcKmwr4f",
-    "XkLCu8K0woU=",
-    "EcOmDMKpAg==",
-    "RULDoGHDlQ==",
-    "wqPCnmLCq8Ky",
-    "JjDDhcO2woc=",
-    "wqVuwpBDUw==",
-    "wprDqMKFIm8=",
-    "fnHCgMK0wr4=",
-    "DCnDksOowrw=",
-    "w4fCmsOCw5nDhw==",
-    "TWTDpMKZEg==",
-    "w55MCnvCkg==",
-    "w53Cm0Ikw7hX",
-    "w4TDkzHCvMKL",
-    "blVTecOR",
-    "RU/CosKkwqw=",
-    "PRMKahU=",
-    "eMOCwrHDtWo=",
-    "w5jDsi7CosKZ",
-    "w6dow4HDumI=",
-    "w6Z6Blk1",
-    "wpDDvMKoPkU=",
-    "wqXDksOawqDDnQ==",
-    "CRnDr8OUwqw=",
-    "TsOFwrHDhHk=",
-    "wpHDscOJwq5B",
-    "E24RfTo=",
-    "RsOTwp/Dqkc=",
-    "AVfCg8KTOg==",
-    "B8OXHsKfDg==",
-    "D8K3w7XDglU=",
-    "wrXDlsKKKHc=",
-    "KcOswoTCocOL",
-    "GcOcK8KoOg==",
-    "w6LCt3gtw40=",
-    "GMKZcCPDrg==",
-    "w7UpGQ5S",
-    "Zx3ChgPDnA==",
-    "FA8iQBE=",
-    "wqHCgEXClEA=",
-    "UsOGQU4x",
-    "TEjDm8KWEw==",
-    "w7vCmEo1w4A=",
-    "ICbDkMOswp4=",
-    "w5lGw6vDvms=",
-    "wqNLwqBrSg==",
-    "V0NZZsOp",
-    "NCUIZhM=",
-    "w54ZC3wG",
-    "PDYrZi8=",
-    "w73CnsOYw4rDmA==",
-    "wr1lXMKyPQ==",
-    "w6Y2I0oj",
-    "wojCklJ9XQ==",
-    "ZAXCnhrDnQ==",
-    "LsKSw67Dn0Y=",
-    "HGMUSjs=",
-    "w6zClMOATsKR",
-    "w5x4KFgT",
-    "wpzDr8KxIHA=",
-    "DSUcQhc=",
-    "f8OswrLCuMKB",
-    "wpzCql7Cl8KR",
-    "aMKdwp8KJg==",
-    "wq/CoX9+bw==",
-    "w47CpwrClcOM",
-    "wqNMwq1lVw==",
-    "wqnCv1o+Og==",
-    "GSEnazc=",
-    "YH/Ct8K/wr4=",
-    "wpDDjcKtIVY=",
-    "UHbDnMKCAw==",
-    "asOfwqTCksKU",
-    "eyPCgRfDjA==",
-    "woLCgVzCssKW",
-    "fcKDwrJrwrw=",
-    "PBjDl8O4wo4=",
-    "VWrChMKbwp8=",
-    "DsKaw7fDlVI=",
-    "CcO9wrnCrMON",
-    "w44+OkIv",
-    "OxInbzk=",
-    "QMKZwqLClMK/",
-    "LBEaWAY=",
-    "wrzDpMO6wo5f",
-    "wr0JLMOCwps=",
-    "wr3ChlZnUQ==",
-    "w4VXw6PDkVY=",
-    "dkbDlVbDrg==",
-    "w7sWPXYf",
-    "w6TCiSUqw58=",
-    "w6zChybCuXA=",
-    "w7o9PF4N",
-    "bsKqwrksDg==",
-    "LMKWQjnDlQ==",
-    "w5TDjsK4woMP",
-    "wq7CrnNyVQ==",
-    "wpXCsWnCiMKw",
-    "ZW7DsEPDqg==",
-    "wpzDqMOuwoLDkw==",
-    "NgXDsMOuwoQ=",
-    "DgzCisO+IA==",
-    "w759BlcU",
-    "EMKtYyjDvA==",
-    "wpTCuEkZEw==",
-    "DcOcFMKYMQ==",
-    "wrTCjF3CpMKf",
-    "C3UObyg=",
-    "w43CpAvCiUQ=",
-    "Tzl4DsOa",
-    "wrVxWsKFJw==",
-    "woYFFMOdwqw=",
-    "w6RVw4rDrU8=",
-    "L8KkeT7Dug==",
-    "w5h/MVcu",
-    "w5lUOWIK",
-    "E8ONwr7CqcO7",
-    "UMO/SXw1",
-    "wrPComlMVg==",
-    "wr/CvXnCvlc=",
-    "w4FPw6DDpVI=",
-    "w5hRw4bDiU8=",
-    "I8ONwrjCiMO5",
-    "LSbDssO5woc=",
-    "w4t0w7rDggU=",
-    "w5zCpzDCq10=",
-    "w77CqMODfcKh",
-    "w6h/N3Ys",
-    "wrNARMKuBQ==",
-    "HsOTIcKKOA==",
-    "c8K9wqXCqMK9",
-    "w4VTO3QT",
-    "VnrDnMKKMQ==",
-    "woPDncKiLm0=",
-    "w5t5B2sK",
-    "w4rCk8OdfsKF",
-    "w5XCvcOww7bDtQ==",
-    "Q8KlwqbCscKc",
-    "woXCtEzCo0M=",
-    "w7Zsw4fDrSM=",
-    "DMOgwqHCgsOO",
-    "I20SXzQ=",
-    "w7DDn8Kfwo80",
-    "GMO0IsKwOA==",
-    "V8OeS3wk",
-    "LHrCq8KDKA==",
-    "wqzCiXzCmsKX",
-    "wofCrkLCtGA=",
-    "w4lRw57DvlM=",
-    "wrXCs1gwMg==",
-    "MMOxwrHCpcOM",
-    "w755w7zDogJN",
-    "wonCqHvClFXChMKTw7psw4vDo2g=",
-    "w5czPnch",
-    "w63CisOHw5rDmA==",
-    "UsK8wpE8Cw==",
-    "w6jCmsOMY8K5",
-    "I8OBwrXCvcON",
-    "MGjCo8K5GA==",
-    "woHCu1zCtnw=",
-    "w5DCry7Cs8OaLQ==",
-    "RHHDk8KXIw==",
-    "SEbDq8KRAw==",
-    "w79Fw6PDr1PDiw==",
-    "HsKuw7fDjWU=",
-    "WsOpfEYU",
-    "w4bDhcKTZCU=",
-    "fk1eYsOmwpJdw4gTGg==",
-    "e1TCjMKhwr0=",
-    "wrTDhsOHwr3Dng==",
-    "w6ZSG0U7",
-    "W33CocKDwo0=",
-    "AhnDr8Omwrxi",
-    "w6LCuFgNw4E=",
-    "IwTDqcOtwpA=",
-    "DmDCp8K8NA==",
-    "b2lwccO9",
-    "TW50e8OU",
-    "w7Ztw5HDoDo=",
-    "w556w5DDojg=",
-    "woV+wopLbcOy",
-    "wqrCvF3CrlI=",
-    "wqJOW8KINQ==",
-    "w74FHxNS",
-    "XMONbEos",
-    "XsKhwr5lwpY=",
-    "XWLCgMKxwp3Djg==",
-    "w7PCijLCn0I=",
-    "f8KkwrprwoI=",
-    "ZFvDqkrDlQ==",
-    "S8Kcwr3CrMK8",
-    "AznDjsOtwpU=",
-    "AMKlcB/DqA==",
-    "FcOgwoXCrcOm",
-    "w6diw4/Dh3c=",
-    "NVnCtcKJHg==",
-    "wqzCi31zVQ==",
-    "UcKUwonCgMK7",
-    "V8KFwpkcJQ==",
-    "LsOowrbCgsOD",
-    "w5DCvTHCmMO+",
-    "YX3DpMKYJAU=",
-    "BxPDh8Ovwow=",
-    "w4TChsO7XsKY",
-    "w6LChcOKccKe",
-    "dEp5fsOh",
-    "ScOYwpbCksK3",
-    "w5zCvMOGw4/DgTw=",
-    "wpjDnsOIwqDDpw==",
-    "HVMYfQ4=",
-    "UMO+wonCj8Kq",
-    "Mkk8TC/CjUIfBVY=",
-    "PsOzGMKuOw==",
-    "RMK9wpLCq8KIw5A=",
-    "w6vDucKnwqsx",
-    "w7zCusOnYMKo",
-    "KMOaN8KMNMOt",
-    "w7l+OGbCpQ==",
-    "P8KsZyDDvA==",
-    "UyhuB8OK",
-    "ICbDkMO2wpE=",
-    "wofDuMKFCUU=",
-    "wobDl8K+AEo=",
-    "w77CsHo1w6A=",
-    "w7HDoMKSwr4W",
-    "wrLDh8Otwq1t",
-    "JMOcL8KoGw==",
-    "NCbDpsOTwq4=",
-    "wp3DuMOiwq/Dpw==",
-    "PsOwJMKeLA==",
-    "ERwDdAc=",
-    "wo7Dj8O6wqFb",
-    "w4/CqcO/w77Drg==",
-    "wp8XLcOpwpM=",
-    "BTnDrMOXwqU=",
-    "wpNrUMKuEg==",
-    "IybDpsO4wqM=",
-    "w4vCqDTChl4=",
-    "CMKrw5bDuVg=",
-    "w6vChsOfw7nDrA==",
-    "w5/CrcOwfcK7",
-    "w6XDp8K2wrQW",
-    "eBLCuTzDrg==",
-    "ccO6wpDCi8Kr",
-    "w71+w7jDiRE=",
-    "UwLChAbDhQ==",
-    "BAjCgcOqEQ==",
-    "XgNoHcOI",
-    "wpDDhsOowoF/",
-    "w7TCvcOrw67Dtg==",
-    "wpbCoE5YUg==",
-    "eMKTw4XCmQ==",
-    "LBfCqcOSCw==",
-    "wr/DmcOzwrVL",
-    "NRsPYxY=",
-    "wprCmFzCmkA=",
-    "YBRkFcOK",
-    "JMO/CcKTKw==",
-    "PSDCgMO7Mg==",
-    "w6Baw53DuGI=",
-    "YWjDiHDDsQ==",
-    "TTlJCcOZ",
-    "F8KQw6LDrkI=",
-    "w79pw4PDvVI=",
-    "LsO3EMK1GQ==",
-    "UsOyXlwJ",
-    "w4bCvMOZw7jDtg==",
-    "QMKwwofCjcKgw4la",
-    "Jx3Du8Omwr0=",
-    "HTjCkMO7Ag==",
-    "w6PDp8Kfbzw=",
-    "w4Jbw5PDjQI=",
-    "w7PCocOtw6/Dgg==",
-    "KcKvw4/DvVk=",
-    "KwrCqcOqJxJyZQgk",
-    "IB3Dl8OfwpM=",
-    "w5/CoiHCpsOvMQ==",
-    "VFzDhk3Dlw==",
-    "w5J/PkMewpI=",
-    "YsOZwrLCnMKL",
-    "csKPwqvCusKv",
-    "w57CmQbCu8Oe",
-    "w5fCqD0Gw4k=",
-    "w4pQEV7Cgw==",
-    "HDXDr8OTwo8=",
-    "wqrCkcKoNRI=",
-    "ezl/KcO5",
-    "NMKZcCfDrg==",
-    "SXzDicK5Ew==",
-    "wqtHeggZ",
-    "w7nDjj3CjsKe",
-    "w4dGFXUy",
-    "AwzCi8OaMg==",
-    "JcOULsKbJg==",
-    "w4BZJ1o0",
-    "wr7DgMOMwpJc",
-    "Q0fDt0LDkQ==",
-    "woDDssKuDUs=",
-    "HcO0OsKeBQ==",
-    "w6vDrMKuRB0=",
-    "P0U/bBs=",
-    "w47DsMK2wrYy",
-    "S8OLwoXCjMKQ",
-    "wopOSsK5PQ==",
-    "w5xxB1cT",
-    "YcOswqXDoWM=",
-    "w5tLMmHCqw==",
-    "CcK6w5bDlXU=",
-    "aFBWdA==",
-    "w5LCkVkxw79awpDDjQ==",
-    "fMKZwrkuDcOO",
-    "w5UUOARqw4gyEsKMwqvDmn8aw4A=",
-    "wpDCj8K5KCzDk0cGw6I=",
-    "H8OLwrTCi8OrwqbCig==",
-    "M8KtRRnDmXDCgnPDrx7DvyY=",
-    "w53Cl8OpZMKka8KYfMOFI3pkYBg=",
-    "w4rCpsOBw4g=",
-    "RWPDusK9LQ==",
-    "wr3Ck2rCocKgw73CpjM5w5hQwozDhcKmGSw/wrPCnhXCmsOow7E=",
-    "wozDisKgPw==",
-    "wp/DqcO/wo1R",
-    "wpnCk2PCpcKxw6Y=",
-    "JsOIHsKbIw==",
-    "w7xDw7TDnGo=",
-    "w4Z4w5bDrSY=",
-    "WjPCpQfDpMOR",
-    "wo/Cl8K3PQo=",
-    "w67Cixsow49l",
-    "w5nCpsOGw4/DlCHDhEDCuTbChlHDg8OzwpRc",
-    "HzPCk8O7TMOEwpZIwoA3GmUVZ8OiYDsIUcORVRIOw6HCoTssXXINw7I9w73CucKxwosGwpHDv8O9RsOmHEvDmV0uUsK/w67Ctw5FacOZw5jDlcOPJMOUXURMeQ==",
-    "woYDE8OP",
-    "wpHDl8OiwqHDmQ==",
-    "L8OswpTDq0rDpA==",
-    "wq/CsQTCvsKSw5JPwoFfbcOXw54=",
-    "w6/Dg8KYXBk=",
-    "w61JCV7CmQ==",
-    "H8KXdT3DqQ==",
-    "T8OywpTDoXk=",
-    "aGp0ScOc",
-    "w4TCjAXCg8Ov",
-    "W3DDhlTDug==",
-    "wqrCjHFOdg==",
-    "wqjCoHUbCQ==",
-    "w5jCtAcBw7Y=",
-    "TMKpwoIcAQ==",
-    "UsOoRkAr",
-    "w5rCmcOLw4fDkg==",
-    "w7HDrsKVwoE3",
-    "cMKbwqDCt8Kf",
-    "DjM6RRE=",
-    "w4oWPShX",
-    "w6V+DVrCiw==",
-    "wpLCtkEWAg==",
-    "wo3Dq8OswrR4",
-    "TF9+dcOX",
-    "LEDCq8KcAg==",
-    "w5XClMOZw4rDmA==",
-    "w5LDgMKoTwY=",
-    "w57DpTbCr8KB",
-    "X23DtknDoQ==",
-    "worDksOqwqZb",
-    "UmNpRcOg",
-    "NcOjwobCmsOP",
-    "JsOxHsKYOw==",
-    "T8OMXEkH",
-    "wpgdCcOdwro=",
-    "bmhtcsO8",
-    "w4HCiGsIw6g=",
-    "wqjDv8OlwpN9",
-    "w7NHPnHCrA==",
-    "w7bCkzfCu8Oj",
-    "w7lhE2TCgQ==",
-    "w6LDucKgwrcW",
-    "Kk7CisKECw==",
-    "wpBLWzQA",
-    "w5TCsX0Mw44=",
-    "OcOkDMKcFA==",
-    "wpHDk8OmwqnDhTVbwpY1woXClw0=",
-    "N8K1w6nDoHg=",
-    "wozCmlZFcg==",
-    "XWjDjn7DgQ==",
-    "w5nDtcKewqET",
-    "w4MUJA12",
-    "w6gzAV4=",
-    "JTPDvsOFwpdVIUA=",
-    "w7ZUw6TDpUI=",
-    "bsKZwrgu",
-    "MzbDhcO1wqk=",
-    "w6I5HQ5k",
-    "w5nCicOjTMKK",
-    "d8K6wrTCiMKL",
-    "w6BtHlQt",
-    "VV/DpMKdAA==",
-    "H8OuH8KkDA==",
-    "wrrCsGTCnVw=",
-    "w6lCClTCoA==",
-    "wpDCtsKKOAE=",
-    "JgjDkcOswpE=",
-    "wpfClVrCuH4=",
-    "Ukp7UcOj",
-    "RsOTworDqGI=",
-    "eG9ce8OX",
-    "QRXChgvDgA==",
-    "wqDCul1vSA==",
-    "wp8jCMOUwq0=",
-    "dcKGwr4uEQ==",
-    "w5oDGXgL",
-    "FmjCjcK+GQ==",
-    "IcOmB8KVIA==",
-    "woprfD4P",
-    "w6tvw4PDiU8=",
-    "WhdeKMOw",
-    "MRoIYAY=",
-    "w4XDhgDCpcK+",
-    "Fk3ChMKmPA==",
-    "w43DhxHCicKW",
-    "a8KYwrDCvMKv",
-    "wpxdwrZJew==",
-    "wpzCg3QMIg==",
-    "w6fDjsKNTyE=",
-    "Iy3DmsOtwqc=",
-    "ZMKDwqHCm8Kb",
-    "wpbCukkqMA==",
-    "ScOjwr3ClcKi",
-    "ZUXCo8KdwpE=",
-    "cMOoVncM",
-    "woxRwodHaw==",
-    "X8OtSFoa",
-    "eE1sdsOA",
-    "wq3Du8KAKVI=",
-    "EgDCjsOaFw==",
-    "FsKNw7LDi38=",
-    "YzTChAnDoQ==",
-    "wr7CukMZPQ==",
-    "E8OKwpnCh8Of",
-    "FlfCqMK2GA==",
-    "R8KYwpFjwo8=",
-    "RFbChcK+wp8=",
-    "wprDk8OnwpzDlA==",
-    "RHfCvsKhwpo=",
-    "dcK3wqXCs8KY",
-    "wpvCv2fCjQ==",
-    "wpXCvcKLDB0=",
-    "w7fCo8Omw6DDqA==",
-    "w4jCrzPCoA==",
-    "wp9dwrd6XA==",
-    "dFrDt0zDlw==",
-    "wq7CokAIKw==",
-    "wrHCiWJwSw==",
-    "wr4XO8Oewq8=",
-    "e07DiVLDug==",
-    "eQNJNcOs",
-    "LwEVbho=",
-    "w6BUw6zDvFLDkA==",
-    "OxbCvcO8HSl/bSw=",
-    "wpxrwrRbag==",
-    "bMK2woYdAQ==",
-    "GTLCnsOhKQ==",
-    "eUlwRcON",
-    "wr3Cu3waEW4=",
-    "CGYWeSc=",
-    "w4jDoMK5wog=",
-    "UsKlwqPCrsK6",
-    "w6HCvh4qw70="
-];
-var stringArray = _0x4cb6;
-
-/**
- * 通用解密函数 (原 _0x1e77)
- * @param {string} indexHex - 密文在数组中的索引（可能是十六进制字符串）
- * @param {string} key - 解密用的密钥
- */
-var decryptString = function (indexHex, key) {
-    // 1. 处理索引：将 '0x5' 这种字符串转为整数索引
-    // 原代码: _0x51af1b = ~~'0x'['concat'](_0x51af1b);
-    var index = parseInt(indexHex, 16);
-
-    // 从外部大数组中获取密文
-    var encryptedString = stringArray[index];
-
-    // 2. 初始化环境 (只运行一次)
-    // 原代码: if (_0x1e77['WhVhCX'] === undefined)
-    if (decryptString['isInitialized'] === undefined) {
-
-        // --- 内部块 A: Base64 Polyfill ---
-        // 这一段是为了兼容没有 atob 的环境 (如旧版 IE 或 Node.js)
-        (function () {
-            var globalScope = typeof window !== 'undefined' ? window : typeof process === 'object' && typeof require === 'function' && typeof global === 'object' ? global : this;
-            var base64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
-
-            // // 如果环境里没有 atob，就手动定义一个
-            // globalScope['atob'] || (globalScope['atob'] = function (input) {
-            //     var str = String(input)['replace'](/=+$/, '');
-            //     for (var bc = 0, bs, buffer, idx = 0, output = ''; buffer = str['charAt'](idx++); ~buffer && (bs = bc % 0x4 ? bs * 0x40 + buffer : buffer,
-            //         bc++ % 0x4) ? output += String['fromCharCode'](0xff & bs >> (-0x2 * bc & 0x6)) : 0x0) {
-            //         buffer = base64Chars['indexOf'](buffer);
-            //     }
-            //     return output;
-            // });
-        }());
-
-        // --- 内部块 B: 核心 RC4 解密算法 (原 _0x6e3a78) ---
-        var rc4Decrypt = function (data, key) {
-            var sBox = [],
-                j = 0,
-                temp,
-                decryptedResult = '',
-                uriEncoded = '';
-
-            // B1. Base64 解码
-            data = atob(data);
-
-            // B2. 处理 URL 编码 (为了正确显示中文和特殊字符)
-            for (var i = 0, len = data['length']; i < len; i++) {
-                uriEncoded += '%' + ('00' + data['charCodeAt'](i)['toString'](16))['slice'](-2);
-            }
-            data = decodeURIComponent(uriEncoded);
-
-            // B3. 初始化 S-Box (0-255)
-            for (var i = 0; i < 256; i++) {
-                sBox[i] = i;
-            }
-
-            // B4. KSA (Key Scheduling Algorithm) - 密钥调度算法
-            // 用密钥打乱 S-Box
-            for (var i = 0; i < 256; i++) {
-                j = (j + sBox[i] + key['charCodeAt'](i % key['length'])) % 256;
-                // 交换
-                temp = sBox[i];
-                sBox[i] = sBox[j];
-                sBox[j] = temp;
-            }
-
-            // B5. PRGA (Pseudo-Random Generation Algorithm) - 伪随机生成与解密
-            var i = 0;
-            j = 0;
-            for (var k = 0; k < data['length']; k++) {
-                i = (i + 1) % 256;
-                j = (j + sBox[i]) % 256;
-
-                // 再次交换
-                temp = sBox[i];
-                sBox[i] = sBox[j];
-                sBox[j] = temp;
-
-                // 异或解密
-                var keyStreamByte = sBox[(sBox[i] + sBox[j]) % 256];
-                decryptedResult += String['fromCharCode'](data['charCodeAt'](k) ^ keyStreamByte);
-            }
-            return decryptedResult;
-        };
-
-        // 将 RC4 函数挂载到主函数上
-        decryptString['rc4Core'] = rc4Decrypt; // 原 pWOTjT
-        decryptString['cache'] = {};           // 原 AfFUIg
-        decryptString['isInitialized'] = true; // 原 WhVhCX
-    }
-
-    // 3. 检查缓存
-    var cachedResult = decryptString['cache'][index];
-
-    // 如果缓存里没有，说明是第一次解密
-    if (cachedResult === undefined) {
-
-        // --- 内部块 C: 反调试/代码完整性检查 (原 _0x1e77['ebRkjK']) ---
-        // 这部分是用来防止你格式化代码的。如果你格式化了代码，正则匹配会失败，导致程序崩溃或进入死循环。
-        // 在纯静态分析或重写脚本时，这部分通常可以直接删除。
-        // if (decryptString['antiTamperInitialized'] === undefined) {
-        //     var AntiTamperDetector = function (context) {
-        //         this['context'] = context;
-        //         this['state'] = [0x1, 0x0, 0x0]; // 状态机
-        //         this['targetFunc'] = function () {
-        //             return 'newState';
-        //         };
-        //         // 正则表达式：用于匹配压缩后的函数代码特征
-        //         this['regexPart1'] = '\x5cw+\x20*\x5c(\x5c)\x20*{\x5cw+\x20*';
-        //         this['regexPart2'] = '[\x27|\x22].+[\x27|\x22];?\x20*}';
-        //     };
-
-        //     AntiTamperDetector['prototype']['checkIntegrity'] = function () {
-        //         var regex = new RegExp(this['regexPart1'] + this['regexPart2']);
-        //         // 如果格式化了代码，targetFunc.toString() 就会包含多余的空格/换行，导致 test 失败
-        //         var checkResult = regex['test'](this['targetFunc']['toString']())
-        //             ? --this['state'][0x1]  // 正常路径
-        //             : --this['state'][0x0]; // 异常路径（被篡改）
-
-        //         return this['executeTrace'](checkResult);
-        //     };
-
-        //     AntiTamperDetector['prototype']['executeTrace'] = function (result) {
-        //         if (!Boolean(~result)) {
-        //             return result;
-        //         }
-        //         return this['crashOrRecursion'](this['context']);
-        //     };
-
-        //     AntiTamperDetector['prototype']['crashOrRecursion'] = function (funcCall) {
-        //         // 如果检测到调试/篡改，在这里疯狂消耗内存或死循环
-        //         for (var i = 0, len = this['state']['length']; i < len; i++) {
-        //             this['state']['push'](Math['round'](Math['random']()));
-        //             len = this['state']['length'];
-        //         }
-        //         return funcCall(this['state'][0x0]);
-        //     };
-
-        //     // 触发反调试检查
-        //     new AntiTamperDetector(decryptString)['checkIntegrity']();
-        //     decryptString['antiTamperInitialized'] = true; // 原 ebRkjK
-        // }
-
-        // 4. 执行解密并存入缓存
-        // encryptedString 是密文，key 是密钥
-        encryptedString = decryptString['rc4Core'](encryptedString, key);
-        decryptString['cache'][index] = encryptedString;
-    } else {
-        encryptedString = cachedResult;
-    }
-
-    return encryptedString;
-};
-
-/**
- * 
- * @param {string} code code snippets
- * @param {string} decrypt_func_name the func name used to decrypt strings
- * @returns {string} code with decrypted strings
- */
-var replaceVar = (code, decrypt_func_name) => {
-    if (typeof code !== 'string' || typeof decrypt_func_name !== 'string' || !decrypt_func_name) {
-        return code;
-    }
-
-    // 匹配形如: decrypt_func_name('0x1a','key') 或 decrypt_func_name("0x1a","key") 或 decrypt_func_name(`0x1a`,`key`)
-    // 仅处理两个参数都是字符串字面量的情况
-    const makeRegex = (fn) =>
-        new RegExp(
-            String(fn)
-                .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') +
-            '\\(\\s*([\'"`])([^\'"`]+)\\1\\s*,\\s*([\'"`])([^\'"`]+)\\3\\s*\\)',
-            'g'
-        );
-
-    const regex = makeRegex(decrypt_func_name);
-
-    // 多轮替换，直到不再匹配（处理嵌套或多次出现）
-    let prev;
-    do {
-        prev = code;
-        code = code.replace(regex, (_, q1, arg1, q2, arg2) => {
-            try {
-                // 调用现有的解密函数
-                const decrypted = decryptString(arg1, arg2);
-
-                // 安全生成字符串字面量
-                const literal = JSON.stringify(decrypted);
-                return literal;
-            } catch (e) {
-                // 若解密失败，保持原调用不变
-                return `${decrypt_func_name}(${q1}${arg1}${q1},${q2}${arg2}${q2})`;
-            }
-        });
-    } while (code !== prev);
-
-    return code;
-};
-
 const parser = require('@babel/parser');
 const traverse = require('@babel/traverse').default;
 const t = require('@babel/types');
 const generator = require('@babel/generator').default;
 
-function isSimpleReturn(bodyBlock) {
-    if (!bodyBlock || !bodyBlock.body || bodyBlock.body.length !== 1) return false;
-    return t.isReturnStatement(bodyBlock.body[0]);
+function parseSourceCode(sourceCode) {
+    return parser.parse(sourceCode, { sourceType: 'unambiguous' });
 }
 
-var unpackObfDicts = (sourceCode) => {
-    let currentCode = sourceCode;
-    let loopCount = 0;
-    const MAX_LOOPS = 20;
+function isObfuscatedName(name) {
+    return typeof name === 'string' && /^(?:_0x[0-9a-f]+|a\d+_0x[0-9a-f]+)$/i.test(name);
+}
 
-    let processedDictNames = new Set();
+function removeDeclarator(path) {
+    if (!path?.parentPath?.node || !Array.isArray(path.parentPath.node.declarations)) {
+        path.remove();
+        return;
+    }
 
-    while (loopCount < MAX_LOOPS) {
-        loopCount++;
-        let hasChanged = false;
+    if (
+        path.parentPath.parentPath &&
+        (
+            path.parentPath.parentPath.isForInStatement?.() ||
+            path.parentPath.parentPath.isForOfStatement?.() ||
+            path.parentPath.parentPath.isForStatement?.()
+        )
+    ) {
+        return;
+    }
 
-        const ast = parser.parse(currentCode);
-        let allDicts = {};
+    if (path.parentPath.node.declarations.length === 1) {
+        path.parentPath.remove();
+        return;
+    }
 
-        // --- 步骤一：寻找字典 ---
-        traverse(ast, {
-            VariableDeclarator(path) {
-                if (path.node.init && t.isObjectExpression(path.node.init)) {
-                    const properties = path.node.init.properties;
-                    // if (properties.length < 3) return;
+    path.remove();
+}
 
-                    let tempDict = {};
-                    let isLikelyObfuscatedDict = true;
+function evaluateStaticNode(node) {
+    if (t.isNumericLiteral(node) || t.isStringLiteral(node) || t.isBooleanLiteral(node)) {
+        return node.value;
+    }
 
-                    for (let prop of properties) {
-                        if (!prop.key) { isLikelyObfuscatedDict = false; break; }
-                        const key = prop.key.value || prop.key.name;
-                        const val = prop.value;
+    if (t.isNullLiteral(node)) {
+        return null;
+    }
 
-                        // 1. 字符串映射
-                        if (t.isStringLiteral(val)) {
-                            tempDict[key] = { type: 'string', value: val.value };
-                        }
-                        // 2. 函数映射
-                        else if (t.isFunctionExpression(val) && isSimpleReturn(val.body)) {
-                            const retArg = val.body.body[0].argument;
-                            const params = val.params.map(p => p.name); // 获取函数参数名列表
+    if (t.isIdentifier(node, { name: 'undefined' })) {
+        return undefined;
+    }
 
-                            if (t.isBinaryExpression(retArg)) {
-                                tempDict[key] = { type: 'binary', operator: retArg.operator };
-                            }
-                            else if (t.isLogicalExpression(retArg)) {
-                                tempDict[key] = { type: 'logical', operator: retArg.operator };
-                            }
-                            else if (t.isCallExpression(retArg)) {
-                                // 重点修复逻辑：区分 "执行参数" 和 "执行别名"
-                                const callee = retArg.callee;
+    if (t.isUnaryExpression(node)) {
+        const value = evaluateStaticNode(node.argument);
 
-                                // 情况 A: 调用的是参数之一 (例如: return fn(a, b))
-                                if (t.isIdentifier(callee) && params.includes(callee.name)) {
-                                    tempDict[key] = { type: 'call_indirect' }; // 标记为间接调用
-                                }
-                                // 情况 B: 调用的不是参数 (例如: return _0x56da17["FYuCb"](a, b))
-                                else {
-                                    // 我们需要把被调用的那个节点保存下来
-                                    // 注意：这里保存的是 AST 节点，比如 _0x56da17["FYuCb"]
-                                    tempDict[key] = { type: 'call_alias', calleeNode: callee };
-                                }
-                            }
-                        }
-                    }
-
-                    if (isLikelyObfuscatedDict && Object.keys(tempDict).length > 0) {
-                        const dictName = path.node.id.name;
-                        allDicts[dictName] = tempDict;
-
-                        // 新增：记录名字
-                        processedDictNames.add(dictName);
-                    }
-                }
-            }
-        });
-
-        if (Object.keys(allDicts).length === 0) {
-            if (loopCount === 1) console.log("未检测到标准混淆字典。");
-            break;
-        }
-
-        console.log(`第 ${loopCount} 轮: 发现 ${Object.keys(allDicts).length} 个字典。正在替换...`);
-
-        // --- 步骤二：执行替换 ---
-        traverse(ast, {
-            // 字符串处理 (保持不变)
-            MemberExpression(path) {
-                if (path.removed) return;
-                const objectName = path.node.object.name;
-                const propertyName = path.node.property.value || path.node.property.name;
-
-                if (t.isCallExpression(path.parent) && path.parent.callee === path.node) return;
-
-                if (allDicts[objectName] && allDicts[objectName][propertyName]) {
-                    const mapping = allDicts[objectName][propertyName];
-                    if (mapping.type === 'string') {
-                        path.replaceWith(t.stringLiteral(mapping.value));
-                        hasChanged = true;
-                    }
-                }
-            },
-
-            // 函数调用处理
-            CallExpression(path) {
-                if (path.removed) return;
-                const callee = path.node.callee;
-                if (!t.isMemberExpression(callee)) return;
-
-                const objectName = callee.object.name;
-                const propertyName = callee.property.value || callee.property.name;
-
-                if (allDicts[objectName] && allDicts[objectName][propertyName]) {
-                    const mapping = allDicts[objectName][propertyName];
-                    const args = path.node.arguments;
-
-                    if (mapping.type === 'binary') {
-                        if (args.length >= 2) {
-                            path.replaceWith(t.binaryExpression(mapping.operator, args[0], args[1]));
-                            hasChanged = true;
-                        }
-                    }
-                    else if (mapping.type === 'logical') {
-                        if (args.length >= 2) {
-                            path.replaceWith(t.logicalExpression(mapping.operator, args[0], args[1]));
-                            hasChanged = true;
-                        }
-                    }
-                    // 修复点：处理间接调用 (return arg0(arg1))
-                    else if (mapping.type === 'call_indirect') {
-                        if (args.length >= 1) {
-                            const realFunc = args[0];
-                            const realArgs = args.slice(1);
-                            path.replaceWith(t.callExpression(realFunc, realArgs));
-                            hasChanged = true;
-                        }
-                    }
-                    // 修复点：处理直接别名 (return GlobalFunc(arg0, arg1))
-                    else if (mapping.type === 'call_alias') {
-                        // 这里的 args 就是直接传递给内部函数的参数
-                        // 我们只需要用 mapping.calleeNode (即那个 GlobalFunc 节点) 替换掉当前的 dict['method']
-                        // 必须使用 t.cloneNode，因为 AST 节点不能重复使用
-                        const newCallee = t.cloneNode(mapping.calleeNode);
-                        path.replaceWith(t.callExpression(newCallee, args));
-                        hasChanged = true;
-                    }
-                }
-            }
-        });
-
-        if (hasChanged) {
-            currentCode = generator(ast, { jsescOption: { minimal: true } }).code;
-        } else {
-            console.log("代码已稳定，停止解包。");
-            break;
+        switch (node.operator) {
+            case '+':
+                return +value;
+            case '-':
+                return -value;
+            case '!':
+                return !value;
+            case '~':
+                return ~value;
+            default:
+                break;
         }
     }
 
+    throw new Error('Unsupported static node.');
+}
+
+function extractArrayDecoderInfo(funcNode) {
+    if (!t.isFunctionDeclaration(funcNode) || !funcNode.id) {
+        return null;
+    }
+
+    const funcName = funcNode.id.name;
+    let arrayProviderName = null;
+    let rewritesSelf = false;
+    let tailCallsSelf = false;
+
+    for (const statement of funcNode.body.body) {
+        if (t.isVariableDeclaration(statement)) {
+            for (const declarator of statement.declarations) {
+                if (t.isCallExpression(declarator.init) && t.isIdentifier(declarator.init.callee)) {
+                    arrayProviderName = declarator.init.callee.name;
+                }
+            }
+        }
+
+        if (!t.isReturnStatement(statement) || !statement.argument) {
+            continue;
+        }
+
+        const expressions = t.isSequenceExpression(statement.argument)
+            ? statement.argument.expressions
+            : [statement.argument];
+
+        for (const expression of expressions) {
+            if (
+                t.isAssignmentExpression(expression, { operator: '=' }) &&
+                t.isIdentifier(expression.left, { name: funcName }) &&
+                (t.isFunctionExpression(expression.right) || t.isArrowFunctionExpression(expression.right))
+            ) {
+                rewritesSelf = true;
+            }
+
+            if (t.isCallExpression(expression) && t.isIdentifier(expression.callee, { name: funcName })) {
+                tailCallsSelf = true;
+            }
+        }
+    }
+
+    if (!arrayProviderName || !rewritesSelf || !tailCallsSelf) {
+        return null;
+    }
+
     return {
-        code: currentCode,
-        dictNames: Array.from(processedDictNames)
+        decryptFuncName: funcName,
+        arrayProviderName
     };
-};
+}
 
-var removeObfDicts = (sourceCode, targetDictNames) => {
-    // 如果没有名单，为了安全起见，我们什么都不做，或者你可以改为移除所有无用对象
-    if (!targetDictNames || targetDictNames.length === 0) return sourceCode;
+function isRotationCallExpression(node, arrayProviderName) {
+    if (!t.isCallExpression(node)) {
+        return false;
+    }
 
-    const ast = parser.parse(sourceCode);
+    if (!(t.isFunctionExpression(node.callee) || t.isArrowFunctionExpression(node.callee))) {
+        return false;
+    }
+
+    if (!t.isIdentifier(node.arguments[0], { name: arrayProviderName })) {
+        return false;
+    }
+
+    let hasWhileLoop = false;
+    const bodyNode = t.isBlockStatement(node.callee.body) ? node.callee.body : node.callee;
+
+    t.traverseFast(bodyNode, childNode => {
+        if (t.isWhileStatement(childNode)) {
+            hasWhileLoop = true;
+        }
+    });
+
+    return hasWhileLoop;
+}
+
+function pruneTopLevelExpressions(programPath, shouldRemove) {
+    let removedCount = 0;
+
+    for (const statementPath of programPath.get('body')) {
+        if (!statementPath.isExpressionStatement()) {
+            continue;
+        }
+
+        const expressionNode = statementPath.node.expression;
+        const expressions = t.isSequenceExpression(expressionNode)
+            ? expressionNode.expressions
+            : [expressionNode];
+        const remainingExpressions = [];
+
+        for (let index = 0; index < expressions.length; index++) {
+            const expression = expressions[index];
+
+            if (shouldRemove(expression, index, statementPath)) {
+                removedCount++;
+                continue;
+            }
+
+            remainingExpressions.push(expression);
+        }
+
+        if (remainingExpressions.length === expressions.length) {
+            continue;
+        }
+
+        if (remainingExpressions.length === 0) {
+            statementPath.remove();
+        } else if (remainingExpressions.length === 1) {
+            statementPath.replaceWith(t.expressionStatement(remainingExpressions[0]));
+        } else {
+            statementPath.node.expression = t.sequenceExpression(remainingExpressions);
+        }
+    }
+
+    return removedCount;
+}
+
+function removeTopLevelPreludeCallsAst(ast) {
     let removedCount = 0;
 
     traverse(ast, {
+        Program(path) {
+            path.scope.crawl();
+
+            removedCount = pruneTopLevelExpressions(path, (expression, index) => {
+                if (index !== 0) {
+                    return false;
+                }
+
+                if (!t.isCallExpression(expression) || expression.arguments.length !== 0 || !t.isIdentifier(expression.callee)) {
+                    return false;
+                }
+
+                const binding = path.scope.getBinding(expression.callee.name);
+                return Boolean(
+                    binding &&
+                    binding.scope.path === path &&
+                    binding.path.isVariableDeclarator() &&
+                    t.isCallExpression(binding.path.node.init)
+                );
+            });
+
+            path.stop();
+        }
+    });
+
+    return removedCount;
+}
+
+function removeUnusedObfuscatedBindingsAst(ast) {
+    let removedCount = 0;
+
+    traverse(ast, {
+        Program(path) {
+            path.scope.crawl();
+            path.stop();
+        }
+    });
+
+    traverse(ast, {
         VariableDeclarator(path) {
-            const { id, init } = path.node;
-            const varName = id.name;
+            if (!t.isIdentifier(path.node.id) || !isObfuscatedName(path.node.id.name)) {
+                return;
+            }
 
-            // 1. 检查名字：必须是我们解包过的字典
-            if (!targetDictNames.includes(varName)) return;
+            const binding = path.scope.getBinding(path.node.id.name);
+            if (binding && binding.path === path && !binding.referenced) {
+                removeDeclarator(path);
+                removedCount++;
+            }
+        },
+        FunctionDeclaration(path) {
+            if (!path.node.id || !isObfuscatedName(path.node.id.name)) {
+                return;
+            }
 
-            // 2. 检查结构：必须是对象定义 var x = { ... }
-            if (!init || !t.isObjectExpression(init)) return;
-
-            // 3. 核心检查：检查引用计数 (Reference Count)
-            // path.scope.getBinding 会获取该变量在作用域内的所有信息
-            const binding = path.scope.getBinding(varName);
-
-            // binding.referenced 为 false 表示没有任何代码读取或调用这个变量
-            if (binding && !binding.referenced) {
-                // 安全移除
+            const binding = path.scope.getBinding(path.node.id.name);
+            if (binding && binding.path === path && !binding.referenced) {
                 path.remove();
                 removedCount++;
             }
         }
     });
 
-    console.log(`清理完成：移除了 ${removedCount} 个遗留的混淆字典。`);
+    return removedCount;
+}
+
+function getSingleReturnExpression(node) {
+    if (t.isArrowFunctionExpression(node) && !t.isBlockStatement(node.body)) {
+        return node.body;
+    }
+
+    if (!(t.isFunctionExpression(node) || t.isArrowFunctionExpression(node))) {
+        return null;
+    }
+
+    if (!t.isBlockStatement(node.body) || node.body.body.length !== 1) {
+        return null;
+    }
+
+    const onlyStatement = node.body.body[0];
+    if (!t.isReturnStatement(onlyStatement) || !onlyStatement.argument) {
+        return null;
+    }
+
+    return onlyStatement.argument;
+}
+
+function expressionUsesOnlyParams(node, allowedParams, parentNode = null, parentKey = null) {
+    if (!node) {
+        return true;
+    }
+
+    if (t.isIdentifier(node)) {
+        if (parentNode && t.isMemberExpression(parentNode) && parentKey === 'property' && !parentNode.computed) {
+            return true;
+        }
+
+        return allowedParams.has(node.name) || node.name === 'undefined';
+    }
+
+    if (t.isThisExpression(node) || t.isSuper(node) || t.isMetaProperty(node)) {
+        return false;
+    }
+
+    if (
+        (t.isFunctionExpression(node) || t.isArrowFunctionExpression(node)) &&
+        parentNode !== null
+    ) {
+        return false;
+    }
+
+    const childKeys = t.VISITOR_KEYS[node.type] || [];
+    for (const childKey of childKeys) {
+        const childNode = node[childKey];
+
+        if (Array.isArray(childNode)) {
+            for (const item of childNode) {
+                if (item && !expressionUsesOnlyParams(item, allowedParams, node, childKey)) {
+                    return false;
+                }
+            }
+            continue;
+        }
+
+        if (childNode && !expressionUsesOnlyParams(childNode, allowedParams, node, childKey)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function cloneAndReplaceParams(node, paramMap) {
+    if (!node) {
+        return node;
+    }
+
+    if (t.isIdentifier(node) && Object.prototype.hasOwnProperty.call(paramMap, node.name)) {
+        return t.cloneNode(paramMap[node.name], true);
+    }
+
+    const clone = t.cloneNode(node, false);
+    const childKeys = t.VISITOR_KEYS[node.type] || [];
+
+    for (const childKey of childKeys) {
+        const childNode = node[childKey];
+
+        if (Array.isArray(childNode)) {
+            clone[childKey] = childNode.map(item => item ? cloneAndReplaceParams(item, paramMap) : item);
+            continue;
+        }
+
+        if (childNode && typeof childNode.type === 'string') {
+            clone[childKey] = cloneAndReplaceParams(childNode, paramMap);
+        }
+    }
+
+    return clone;
+}
+
+function getProxyPropertyDescriptor(node) {
+    if (
+        t.isStringLiteral(node) ||
+        t.isNumericLiteral(node) ||
+        t.isBooleanLiteral(node) ||
+        t.isNullLiteral(node) ||
+        t.isIdentifier(node)
+    ) {
+        return {
+            kind: 'value',
+            node: t.cloneNode(node, true)
+        };
+    }
+
+    if (!(t.isFunctionExpression(node) || t.isArrowFunctionExpression(node))) {
+        return null;
+    }
+
+    if (!node.params.every(param => t.isIdentifier(param))) {
+        return null;
+    }
+
+    const returnExpression = getSingleReturnExpression(node);
+    if (!returnExpression) {
+        return null;
+    }
+
+    const paramNames = new Set(node.params.map(param => param.name));
+    if (!expressionUsesOnlyParams(returnExpression, paramNames)) {
+        return null;
+    }
+
+    return {
+        kind: 'expr',
+        expr: returnExpression,
+        params: node.params.map(param => param.name)
+    };
+}
+
+var preprocessSharedObfuscation = (sourceCode) => {
+    const currentCode = sourceCode.replace(/---_0x/g, '- --_0x');
+    const ast = parseSourceCode(currentCode);
+    const topLevelFunctions = new Map();
+
+    for (const node of ast.program.body) {
+        if (t.isFunctionDeclaration(node) && node.id) {
+            topLevelFunctions.set(node.id.name, node);
+        }
+    }
+
+    let decoderInfo = null;
+    for (const node of ast.program.body) {
+        const currentInfo = extractArrayDecoderInfo(node);
+        if (!currentInfo) {
+            continue;
+        }
+
+        if (!topLevelFunctions.has(currentInfo.arrayProviderName)) {
+            continue;
+        }
+
+        decoderInfo = currentInfo;
+        break;
+    }
+
+    if (!decoderInfo) {
+        console.error("Could not find a shared string-array decoder.");
+        return { code: sourceCode, dictNames: [] };
+    }
+
+    const rotationExpressions = [];
+    for (const node of ast.program.body) {
+        if (!t.isExpressionStatement(node)) {
+            continue;
+        }
+
+        const expressions = t.isSequenceExpression(node.expression)
+            ? node.expression.expressions
+            : [node.expression];
+
+        for (const expression of expressions) {
+            if (isRotationCallExpression(expression, decoderInfo.arrayProviderName)) {
+                rotationExpressions.push(expression);
+            }
+        }
+    }
+
+    const setupCode = [
+        generator(topLevelFunctions.get(decoderInfo.arrayProviderName)).code,
+        generator(topLevelFunctions.get(decoderInfo.decryptFuncName)).code,
+        ...rotationExpressions.map(expression => `(${generator(expression).code});`)
+    ].join('\n');
+
+    let decryptFn = null;
+    try {
+        decryptFn = new Function(`${setupCode}\nreturn ${decoderInfo.decryptFuncName};`)();
+        console.log("Dictionary code evaluated successfully.");
+    } catch (e) {
+        console.error("Error evaluating dictionary code:", e);
+        return { code: sourceCode };
+    }
+
+    const dictFuncs = new Set([decoderInfo.decryptFuncName]);
+    let lastSize = 0;
+
+    while (dictFuncs.size > lastSize) {
+        lastSize = dictFuncs.size;
+
+        traverse(ast, {
+            VariableDeclarator(path) {
+                if (t.isIdentifier(path.node.id) && t.isIdentifier(path.node.init) && dictFuncs.has(path.node.init.name)) {
+                    dictFuncs.add(path.node.id.name);
+                }
+            },
+            AssignmentExpression(path) {
+                if (t.isIdentifier(path.node.left) && t.isIdentifier(path.node.right) && dictFuncs.has(path.node.right.name)) {
+                    dictFuncs.add(path.node.left.name);
+                }
+            }
+        });
+    }
+
+    const decodeCache = new Map();
+    let replaceCount = 0;
+
+    traverse(ast, {
+        CallExpression(path) {
+            const callee = path.node.callee;
+            if (!t.isIdentifier(callee) || !dictFuncs.has(callee.name)) {
+                return;
+            }
+
+            try {
+                const args = path.node.arguments.map(evaluateStaticNode);
+                const cacheKey = JSON.stringify(args);
+                let result = decodeCache.get(cacheKey);
+
+                if (result === undefined && !decodeCache.has(cacheKey)) {
+                    result = decryptFn(...args);
+                    decodeCache.set(cacheKey, result);
+                }
+
+                if (typeof result === 'string') {
+                    path.replaceWith(t.stringLiteral(result));
+                    replaceCount++;
+                    return;
+                }
+
+                if (typeof result === 'number') {
+                    path.replaceWith(t.numericLiteral(result));
+                    replaceCount++;
+                    return;
+                }
+
+                if (result !== undefined) {
+                    path.replaceWith(t.valueToNode(result));
+                    replaceCount++;
+                }
+            } catch (e) {
+                // Ignore unsupported argument shapes.
+            }
+        }
+    });
+
+    let removedRotations = 0;
+    traverse(ast, {
+        Program(path) {
+            removedRotations = pruneTopLevelExpressions(path, expression =>
+                isRotationCallExpression(expression, decoderInfo.arrayProviderName)
+            );
+            path.stop();
+        }
+    });
+
+    traverse(ast, {
+        FunctionDeclaration(path) {
+            if (!path.node.id || !path.parentPath.isProgram()) {
+                return;
+            }
+
+            if (
+                path.node.id.name === decoderInfo.decryptFuncName ||
+                path.node.id.name === decoderInfo.arrayProviderName
+            ) {
+                path.remove();
+            }
+        },
+        VariableDeclarator(path) {
+            if (
+                t.isIdentifier(path.node.id) &&
+                t.isIdentifier(path.node.init) &&
+                dictFuncs.has(path.node.id.name) &&
+                dictFuncs.has(path.node.init.name)
+            ) {
+                removeDeclarator(path);
+            }
+        },
+        AssignmentExpression(path) {
+            if (
+                t.isIdentifier(path.node.left) &&
+                t.isIdentifier(path.node.right) &&
+                dictFuncs.has(path.node.left.name) &&
+                dictFuncs.has(path.node.right.name) &&
+                path.parentPath.isExpressionStatement()
+            ) {
+                path.parentPath.remove();
+            }
+        }
+    });
+
+    const removedPreludeCalls = removeTopLevelPreludeCallsAst(ast);
+    const removedUnusedBindings = removeUnusedObfuscatedBindingsAst(ast);
+    const outputCode = generator(ast, { jsescOption: { minimal: true } }).code;
+
+    console.log(
+        `Shared decoder unpacked: ${decoderInfo.decryptFuncName}/${decoderInfo.arrayProviderName}, aliases ${dictFuncs.size}, replaced ${replaceCount} calls, removed rotations ${removedRotations}, removed prelude ${removedPreludeCalls}, removed unused ${removedUnusedBindings}.`
+    );
+
+    return {
+        code: outputCode,
+        dictNames: Array.from(dictFuncs),
+        decoderInfo
+    };
+};
+
+var simplifyObfStructures = (sourceCode) => {
+    const ast = parseSourceCode(sourceCode);
+    const proxyBindings = new Map();
+    let dotCount = 0;
+    let dictCount = 0;
+    let inlineCallCount = 0;
+    let inlineValueCount = 0;
+
+    traverse(ast, {
+        MemberExpression(path) {
+            const propName = getStaticMemberName(path.node);
+            if (!isDotSafeProperty(propName)) {
+                return;
+            }
+
+            if (!path.node.computed && t.isIdentifier(path.node.property, { name: propName })) {
+                return;
+            }
+
+            path.node.computed = false;
+            path.node.property = t.identifier(propName);
+            dotCount++;
+        }
+    });
+
+    traverse(ast, {
+        VariableDeclarator(path) {
+            if (
+                !t.isIdentifier(path.node.id) ||
+                !isObfuscatedName(path.node.id.name) ||
+                !t.isObjectExpression(path.node.init)
+            ) {
+                return;
+            }
+
+            const binding = path.scope.getBinding(path.node.id.name);
+            if (!binding || binding.path !== path || !binding.constant) {
+                return;
+            }
+
+            const properties = new Map();
+
+            for (const property of path.node.init.properties) {
+                if (!t.isObjectProperty(property)) {
+                    return;
+                }
+
+                const propName = t.isIdentifier(property.key)
+                    ? property.key.name
+                    : t.isStringLiteral(property.key) || t.isNumericLiteral(property.key)
+                        ? String(property.key.value)
+                        : null;
+
+                if (propName === null) {
+                    return;
+                }
+
+                const descriptor = getProxyPropertyDescriptor(property.value);
+                if (!descriptor) {
+                    return;
+                }
+
+                properties.set(propName, descriptor);
+            }
+
+            if (properties.size === 0) {
+                return;
+            }
+
+            proxyBindings.set(binding.path.node, {
+                properties
+            });
+        }
+    });
+
+    dictCount = proxyBindings.size;
+
+    traverse(ast, {
+        CallExpression(path) {
+            const callee = path.node.callee;
+            if (!t.isMemberExpression(callee) || !t.isIdentifier(callee.object)) {
+                return;
+            }
+
+            const binding = path.scope.getBinding(callee.object.name);
+            const proxyInfo = binding ? proxyBindings.get(binding.path.node) : null;
+            if (!proxyInfo) {
+                return;
+            }
+
+            const propName = getStaticMemberName(callee);
+            const descriptor = proxyInfo.properties.get(propName);
+            if (!descriptor || descriptor.kind !== 'expr' || path.node.arguments.length < descriptor.params.length) {
+                return;
+            }
+
+            const paramMap = {};
+            descriptor.params.forEach((paramName, index) => {
+                paramMap[paramName] = path.node.arguments[index];
+            });
+
+            path.replaceWith(cloneAndReplaceParams(descriptor.expr, paramMap));
+            inlineCallCount++;
+            path.skip();
+        },
+        MemberExpression(path) {
+            if (!path.isReferenced() || path.parentPath.isCallExpression({ callee: path.node })) {
+                return;
+            }
+
+            if (!t.isIdentifier(path.node.object)) {
+                return;
+            }
+
+            const binding = path.scope.getBinding(path.node.object.name);
+            const proxyInfo = binding ? proxyBindings.get(binding.path.node) : null;
+            if (!proxyInfo) {
+                return;
+            }
+
+            const propName = getStaticMemberName(path.node);
+            const descriptor = proxyInfo.properties.get(propName);
+            if (!descriptor || descriptor.kind !== 'value') {
+                return;
+            }
+
+            path.replaceWith(t.cloneNode(descriptor.node, true));
+            inlineValueCount++;
+            path.skip();
+        }
+    });
+
+    const removedUnusedBindings = removeUnusedObfuscatedBindingsAst(ast);
+    console.log(
+        `Structures simplified: normalized ${dotCount} members, found ${dictCount} proxy dicts, inlined calls=${inlineCallCount}, values=${inlineValueCount}, removed unused=${removedUnusedBindings}.`
+    );
+
     return generator(ast, { jsescOption: { minimal: true } }).code;
 };
 
-var removeObfIfStatement = (sourceCode) => {
-    // 1. 将源代码解析为 AST
-    // sourceType: 'module' 允许解析 import/export 等语法
-    const ast = parser.parse(sourceCode, {
-        sourceType: 'module'
+function isRedundantObjectWrapperArgument(path) {
+    return path.isIdentifier() ||
+        path.isMemberExpression() ||
+        path.isObjectExpression() ||
+        path.isFunctionExpression() ||
+        path.isArrowFunctionExpression() ||
+        path.isClassExpression();
+}
+
+function getNodeStart(pathOrNode) {
+    const node = pathOrNode?.node || pathOrNode;
+    return typeof node?.start === 'number' ? node.start : -1;
+}
+
+function getNodeEnd(pathOrNode) {
+    const node = pathOrNode?.node || pathOrNode;
+    return typeof node?.end === 'number' ? node.end : -1;
+}
+
+function isWithinPath(targetPath, ancestorPath) {
+    return !!targetPath && !!ancestorPath && (targetPath === ancestorPath || !!targetPath.findParent(parentPath => parentPath === ancestorPath));
+}
+
+function isObviouslySideEffectFreePath(path) {
+    if (!path?.node) {
+        return false;
+    }
+
+    if (path.isPure()) {
+        return true;
+    }
+
+    if (
+        path.isIdentifier() ||
+        path.isThisExpression() ||
+        path.isSuper() ||
+        path.isMetaProperty() ||
+        path.isFunctionExpression() ||
+        path.isArrowFunctionExpression() ||
+        path.isClassExpression()
+    ) {
+        return true;
+    }
+
+    if (path.isMemberExpression()) {
+        const objectPath = path.get('object');
+        const propertyPath = path.node.computed ? path.get('property') : null;
+        return isObviouslySideEffectFreePath(objectPath) &&
+            (!propertyPath || isObviouslySideEffectFreePath(propertyPath));
+    }
+
+    if (path.isTemplateLiteral()) {
+        return path.get('expressions').every(expressionPath => isObviouslySideEffectFreePath(expressionPath));
+    }
+
+    if (path.isArrayExpression()) {
+        return path.get('elements')
+            .filter(Boolean)
+            .every(elementPath => isObviouslySideEffectFreePath(elementPath));
+    }
+
+    if (path.isObjectExpression()) {
+        return path.get('properties').every(propertyPath => {
+            if (propertyPath.isObjectProperty()) {
+                const keyPath = propertyPath.node.computed ? propertyPath.get('key') : null;
+                return (!keyPath || isObviouslySideEffectFreePath(keyPath)) &&
+                    isObviouslySideEffectFreePath(propertyPath.get('value'));
+            }
+
+            if (propertyPath.isSpreadElement()) {
+                return isObviouslySideEffectFreePath(propertyPath.get('argument'));
+            }
+
+            return false;
+        });
+    }
+
+    if (path.isUnaryExpression()) {
+        return isObviouslySideEffectFreePath(path.get('argument'));
+    }
+
+    if (path.isConditionalExpression()) {
+        return isObviouslySideEffectFreePath(path.get('test')) &&
+            isObviouslySideEffectFreePath(path.get('consequent')) &&
+            isObviouslySideEffectFreePath(path.get('alternate'));
+    }
+
+    if (path.isSequenceExpression()) {
+        return path.get('expressions').every(expressionPath => isObviouslySideEffectFreePath(expressionPath));
+    }
+
+    return false;
+}
+
+function removeRedundantObjectWrappersAst(ast) {
+    let wrapperCount = 0;
+
+    traverse(ast, {
+        CallExpression(path) {
+            if (!t.isIdentifier(path.node.callee, { name: 'Object' }) || path.node.arguments.length !== 1) {
+                return;
+            }
+
+            const argumentPath = path.get('arguments')[0];
+            if (!argumentPath || !isRedundantObjectWrapperArgument(argumentPath)) {
+                return;
+            }
+
+            path.replaceWith(t.cloneNode(argumentPath.node, true));
+            wrapperCount++;
+            path.skip();
+        }
     });
 
-    // 2. 遍历 AST
+    return wrapperCount;
+}
+
+function removeDiscardedPureSequencePrefixesAst(ast) {
+    let removedExpressionCount = 0;
+
     traverse(ast, {
-        // 访问每一个 IfStatement 节点
+        SequenceExpression(path) {
+            const expressionPaths = path.get('expressions');
+            if (expressionPaths.length < 2) {
+                return;
+            }
+
+            const keptExpressions = [];
+
+            expressionPaths.forEach((expressionPath, index) => {
+                const isLastExpression = index === expressionPaths.length - 1;
+                if (isLastExpression || !isObviouslySideEffectFreePath(expressionPath)) {
+                    keptExpressions.push(t.cloneNode(expressionPath.node, true));
+                    return;
+                }
+
+                removedExpressionCount++;
+            });
+
+            if (keptExpressions.length === expressionPaths.length) {
+                return;
+            }
+
+            if (keptExpressions.length === 1) {
+                path.replaceWith(keptExpressions[0]);
+            } else {
+                path.replaceWith(t.sequenceExpression(keptExpressions));
+            }
+        }
+    });
+
+    return removedExpressionCount;
+}
+
+function isReferenceVisibleBeforeWrite(referencePath, writePath) {
+    if (!writePath?.node) {
+        return true;
+    }
+
+    const referenceStart = getNodeStart(referencePath);
+    const writeStart = getNodeStart(writePath);
+    if (referenceStart < writeStart) {
+        return true;
+    }
+
+    if (writePath.isVariableDeclarator()) {
+        const initPath = writePath.get('init');
+        return !!initPath?.node && isWithinPath(referencePath, initPath);
+    }
+
+    if (writePath.isAssignmentExpression()) {
+        const rightPath = writePath.get('right');
+        return !!rightPath?.node && isWithinPath(referencePath, rightPath);
+    }
+
+    if (writePath.isForInStatement() || writePath.isForOfStatement()) {
+        const rightPath = writePath.get('right');
+        return !!rightPath?.node && isWithinPath(referencePath, rightPath);
+    }
+
+    return false;
+}
+
+function getReachableReferencePaths(binding, declaratorPath) {
+    const declaratorEnd = getNodeEnd(declaratorPath);
+    const nextWritePath = binding.constantViolations
+        .filter(violationPath => violationPath !== declaratorPath && getNodeStart(violationPath) >= declaratorEnd)
+        .sort((leftPath, rightPath) => getNodeStart(leftPath) - getNodeStart(rightPath))[0] || null;
+
+    return binding.referencePaths.filter(referencePath => {
+        if (!referencePath.isReferencedIdentifier()) {
+            return false;
+        }
+
+        if (getNodeStart(referencePath) < declaratorEnd) {
+            return false;
+        }
+
+        return isReferenceVisibleBeforeWrite(referencePath, nextWritePath);
+    });
+}
+
+function isAggressivelyInlineableAliasInitPath(path) {
+    if (!path?.node) {
+        return false;
+    }
+
+    return path.isIdentifier() ||
+        path.isMemberExpression() ||
+        path.isThisExpression() ||
+        path.isSuper() ||
+        path.isMetaProperty();
+}
+
+function pathReferencesObfuscatedIdentifier(path) {
+    if (!path?.node) {
+        return false;
+    }
+
+    const tempAst = t.file(t.program([
+        t.expressionStatement(t.cloneNode(path.node, true))
+    ]));
+    let hasObfuscatedIdentifier = false;
+
+    traverse(tempAst, {
+        Identifier(identifierPath) {
+            if (!identifierPath.isReferencedIdentifier()) {
+                return;
+            }
+
+            if (!isObfuscatedName(identifierPath.node.name)) {
+                return;
+            }
+
+            hasObfuscatedIdentifier = true;
+            identifierPath.stop();
+        }
+    });
+
+    return hasObfuscatedIdentifier;
+}
+
+function isSafeDanglingAliasReplacementNode(node) {
+    if (!node) {
+        return false;
+    }
+
+    if (t.isIdentifier(node)) {
+        return !isObfuscatedName(node.name);
+    }
+
+    if (t.isMemberExpression(node)) {
+        return isSafeDanglingAliasReplacementNode(node.object) &&
+            (!node.computed || isSafeDanglingAliasReplacementNode(node.property));
+    }
+
+    return t.isThisExpression(node) ||
+        t.isSuper(node) ||
+        t.isMetaProperty(node) ||
+        t.isStringLiteral(node) ||
+        t.isNumericLiteral(node);
+}
+
+function isSafeDanglingAliasReplacementPath(path) {
+    return !!path?.node && isSafeDanglingAliasReplacementNode(path.node);
+}
+
+function replaceDanglingObfuscatedAliasReferencesAst(ast, removedAliasInitMap) {
+    let replacedCount = 0;
+
+    if (!(removedAliasInitMap instanceof Map) || removedAliasInitMap.size === 0) {
+        return replacedCount;
+    }
+
+    traverse(ast, {
+        Identifier(path) {
+            if (!path.isReferencedIdentifier()) {
+                return;
+            }
+
+            const replacementNode = removedAliasInitMap.get(path.node.name);
+            if (!replacementNode) {
+                return;
+            }
+
+            if (path.scope.hasBinding(path.node.name)) {
+                return;
+            }
+
+            path.replaceWith(t.cloneNode(replacementNode, true));
+            replacedCount++;
+        }
+    });
+
+    return replacedCount;
+}
+
+function inlineSingleUseObfuscatedAliasesAst(ast) {
+    let inlineCount = 0;
+    let changed = true;
+    const removedAliasInitMap = new Map();
+
+    while (changed) {
+        changed = false;
+
+        traverse(ast, {
+            Program(path) {
+                path.scope.crawl();
+                path.stop();
+            }
+        });
+
+        const replacedDanglingReferenceCount = replaceDanglingObfuscatedAliasReferencesAst(ast, removedAliasInitMap);
+        if (replacedDanglingReferenceCount > 0) {
+            changed = true;
+            traverse(ast, {
+                Program(path) {
+                    path.scope.crawl();
+                    path.stop();
+                }
+            });
+        }
+
+        const candidates = [];
+
+        traverse(ast, {
+            VariableDeclarator(path) {
+                if (
+                    !t.isIdentifier(path.node.id) ||
+                    !isObfuscatedName(path.node.id.name) ||
+                    !path.node.init
+                ) {
+                    return;
+                }
+
+                const binding = path.scope.getBinding(path.node.id.name);
+                if (
+                    !binding ||
+                    binding.referencePaths.length === 0
+                ) {
+                    return;
+                }
+
+                const initPath = path.get('init');
+                if (!isObviouslySideEffectFreePath(initPath)) {
+                    return;
+                }
+
+                if (pathReferencesObfuscatedIdentifier(initPath)) {
+                    return;
+                }
+
+                const reachableReferencePaths = getReachableReferencePaths(binding, path);
+                if (reachableReferencePaths.length === 0) {
+                    return;
+                }
+
+                if (
+                    reachableReferencePaths.length > 1 &&
+                    !(
+                        isAggressivelyInlineableAliasInitPath(initPath) &&
+                        isSafeDanglingAliasReplacementPath(initPath)
+                    )
+                ) {
+                    return;
+                }
+
+                candidates.push({
+                    declaratorPath: path,
+                    name: path.node.id.name,
+                    replacementNode: t.cloneNode(path.node.init, true),
+                    referencePaths: reachableReferencePaths.slice(),
+                    isSafeReplacement: isAggressivelyInlineableAliasInitPath(initPath) &&
+                        isSafeDanglingAliasReplacementPath(initPath)
+                });
+            }
+        });
+
+        if (candidates.length === 0) {
+            continue;
+        }
+
+        for (const candidate of candidates) {
+            candidate.referencePaths
+                .slice()
+                .filter(referencePath => !!referencePath?.node && !referencePath.removed)
+                .sort((leftPath, rightPath) => getNodeStart(rightPath) - getNodeStart(leftPath))
+                .forEach(referencePath => {
+                    referencePath.replaceWith(t.cloneNode(candidate.replacementNode, true));
+                });
+            if (candidate.isSafeReplacement) {
+                removedAliasInitMap.set(candidate.name, t.cloneNode(candidate.replacementNode, true));
+            }
+            inlineCount++;
+            changed = true;
+        }
+
+        traverse(ast, {
+            Program(path) {
+                path.scope.crawl();
+                path.stop();
+            }
+        });
+
+        candidates
+            .slice()
+            .filter(candidate => !!candidate.declaratorPath?.node && !candidate.declaratorPath.removed)
+            .sort((leftCandidate, rightCandidate) =>
+                getNodeStart(rightCandidate.declaratorPath) - getNodeStart(leftCandidate.declaratorPath)
+            )
+            .forEach(candidate => {
+                const binding = candidate.declaratorPath.scope.getBinding(candidate.name);
+                if (!binding) {
+                    return;
+                }
+
+                const remainingReachableReferences = getReachableReferencePaths(binding, candidate.declaratorPath);
+                if (remainingReachableReferences.length !== 0) {
+                    return;
+                }
+
+                removeDeclarator(candidate.declaratorPath);
+            });
+
+        traverse(ast, {
+            Program(path) {
+                path.scope.crawl();
+                path.stop();
+            }
+        });
+
+        if (!changed) {
+            break;
+        }
+    }
+
+    return inlineCount;
+}
+
+var cleanupObfuscatedReadableArtifacts = (sourceCode) => {
+    const ast = parser.parse(sourceCode, { sourceType: 'module' });
+    const redundantObjectWrapperCount = removeRedundantObjectWrappersAst(ast);
+    const removedSequencePrefixCount = removeDiscardedPureSequencePrefixesAst(ast);
+    const inlinedSingleUseAliasCount = inlineSingleUseObfuscatedAliasesAst(ast);
+    const removedUnusedBindings = removeUnusedObfuscatedBindingsAst(ast);
+
+    console.log(
+        `Obfuscated readability cleanup: removed Object() wrappers=${redundantObjectWrapperCount}, removed discarded sequence prefixes=${removedSequencePrefixCount}, inlined single-use aliases=${inlinedSingleUseAliasCount}, removed unused=${removedUnusedBindings}.`
+    );
+
+    return generator(ast, { jsescOption: { minimal: true } }).code;
+};
+
+var unpackObfDicts = (sourceCode) => preprocessSharedObfuscation(sourceCode);
+
+var removeObfIfStatement = (sourceCode) => {
+    const ast = parser.parse(sourceCode, { sourceType: 'module' });
+    traverse(ast, {
         IfStatement(path) {
             const node = path.node;
             const test = node.test;
-
-            // 3. 检测：我们需要过滤出特定的结构
-            // 结构特征：if ("str" op "str")
-            // 判断条件必须是二元表达式 (BinaryExpression)
             if (!t.isBinaryExpression(test)) return;
-
-            // 判断左右两边是否都是字符串字面量 (StringLiteral)
             if (!t.isStringLiteral(test.left) || !t.isStringLiteral(test.right)) return;
 
-            // 4. 求值：手动计算这个表达式的结果
-            // 获取左右两边的字符串值
             const leftVal = test.left.value;
             const rightVal = test.right.value;
             const operator = test.operator;
 
             let result = null;
-
-            // 根据操作符进行运算 (针对你提到的 ===, !==, ==, !=)
             switch (operator) {
                 case '===':
-                case '==':
-                    result = leftVal === rightVal;
-                    break;
+                case '==': result = leftVal === rightVal; break;
                 case '!==':
-                case '!=':
-                    result = leftVal !== rightVal;
-                    break;
-                // 如果有其他操作符可以在这里补充
+                case '!=': result = leftVal !== rightVal; break;
             }
 
-            // 如果结果没有被计算出来（不是我们要的操作符），则跳过
             if (result === null) return;
 
-            // 5. 替换：根据计算结果保留代码分支
-
             if (result === true) {
-                // 情况 A: 结果为真，只保留 if 里面的代码 (consequent)
-                // 这里的处理是为了去掉多余的花括号 {}
                 if (t.isBlockStatement(node.consequent)) {
-                    // 如果里面是代码块 { ... }，用代码块里的语句列表替换当前节点
                     path.replaceWithMultiple(node.consequent.body);
                 } else {
-                    // 如果里面只有一句代码 (没有花括号)，直接替换
                     path.replaceWith(node.consequent);
                 }
             } else {
-                // 情况 B: 结果为假，只保留 else 里面的代码 (alternate)
                 if (node.alternate) {
-                    // 如果存在 else 块
                     if (t.isBlockStatement(node.alternate)) {
                         path.replaceWithMultiple(node.alternate.body);
                     } else {
                         path.replaceWith(node.alternate);
                     }
                 } else {
-                    // 如果结果为假，且没有 else，说明整个 if 语句都可以删掉
                     path.remove();
                 }
             }
-
-            // 这是一个好习惯：如果你替换了节点，建议停止处理当前路径的子节点，或者重新根据需要处理
-            // 这里因为我们替换了整个 If 语句，通常不需要再深究旧的结构了
         }
     });
-
-    // 6. 生成代码
-    // jsescOption: { minimal: true } 可以在生成代码时尽量少用转义符
-    console.log("条件语句清理完成。");
+    console.log("if statements cleaned.");
     return generator(ast, { jsescOption: { minimal: true } }).code;
 }
 
-var removeObfFunc = (sourceCode) => {
-    // === 阶段一：内联替换 (Inlining) ===
-    // 这个阶段我们只关注把代码展开，不关心删除，避免 Scope 问题干扰
+const WEBPACK_RUNTIME_KEYS = ['e', 'm', 'c', 'd', 'r', 't', 'n', 'o', 'p', 'oe'];
 
-    let ast = parser.parse(sourceCode);
-    let changed = true;
-    let loopCount = 0;
+function getStaticMemberName(node) {
+    if (!t.isMemberExpression(node)) return null;
+    if (!node.computed && t.isIdentifier(node.property)) return node.property.name;
+    if (node.computed && t.isStringLiteral(node.property)) return node.property.value;
+    return null;
+}
 
-    function getProxyFunctionInfo(path) {
-        const { node } = path;
-        const body = node.body.body;
-        if (body.length !== 1 || !t.isReturnStatement(body[0])) return null;
-        const returnArg = body[0].argument;
-        if (!returnArg) return null;
-        return { returnArg };
+function isDotSafeProperty(name) {
+    return typeof name === 'string' && t.isValidIdentifier(name);
+}
+
+function isFunctionHelperAssignment(node, funcName) {
+    if (!t.isAssignmentExpression(node, { operator: '=' })) return false;
+    if (!t.isMemberExpression(node.left)) return false;
+    if (!t.isIdentifier(node.left.object, { name: funcName })) return false;
+    return getStaticMemberName(node.left) !== null;
+}
+
+function makeDefinePropertyCall(targetNode, keyNode, descriptorNode) {
+    return t.callExpression(
+        t.memberExpression(t.identifier('Object'), t.identifier('defineProperty')),
+        [t.cloneNode(targetNode), t.cloneNode(keyNode), descriptorNode]
+    );
+}
+
+function makeHasOwnPropertyCall(targetNode, keyNode) {
+    return t.callExpression(
+        t.memberExpression(
+            t.memberExpression(
+                t.memberExpression(t.identifier('Object'), t.identifier('prototype')),
+                t.identifier('hasOwnProperty')
+            ),
+            t.identifier('call')
+        ),
+        [t.cloneNode(targetNode), t.cloneNode(keyNode)]
+    );
+}
+
+function makeDefineGetterExpression(targetNode, keyNode, getterNode) {
+    return t.logicalExpression(
+        '||',
+        makeHasOwnPropertyCall(targetNode, keyNode),
+        makeDefinePropertyCall(
+            targetNode,
+            keyNode,
+            t.objectExpression([
+                t.objectProperty(t.identifier('enumerable'), t.booleanLiteral(true)),
+                t.objectProperty(t.identifier('get'), t.cloneNode(getterNode))
+            ])
+        )
+    );
+}
+
+function makeMarkEsModuleExpression(targetNode) {
+    return t.sequenceExpression([
+        t.logicalExpression(
+            '&&',
+            t.logicalExpression(
+                '&&',
+                t.binaryExpression(
+                    '!==',
+                    t.unaryExpression('typeof', t.identifier('Symbol'), true),
+                    t.stringLiteral('undefined')
+                ),
+                t.memberExpression(t.identifier('Symbol'), t.identifier('toStringTag'))
+            ),
+            makeDefinePropertyCall(
+                targetNode,
+                t.memberExpression(t.identifier('Symbol'), t.identifier('toStringTag')),
+                t.objectExpression([
+                    t.objectProperty(t.identifier('value'), t.stringLiteral('Module'))
+                ])
+            )
+        ),
+        makeDefinePropertyCall(
+            targetNode,
+            t.stringLiteral('__esModule'),
+            t.objectExpression([
+                t.objectProperty(t.identifier('value'), t.booleanLiteral(true))
+            ])
+        )
+    ]);
+}
+
+function renameBinding(scopePath, oldName, newName) {
+    if (!scopePath?.scope || !oldName || !newName || oldName === newName) {
+        return false;
     }
 
-    while (changed && loopCount < 50) {
-        changed = false;
-        loopCount++;
-
-        // 每次循环重新遍历，确保获取最新状态
-        traverse(ast, {
-            FunctionDeclaration(path) {
-                const proxyInfo = getProxyFunctionInfo(path);
-                if (!proxyInfo) return;
-
-                const { node } = path;
-                const params = node.params;
-                const { returnArg } = proxyInfo;
-                const binding = path.scope.getBinding(node.id.name);
-
-                if (!binding || !binding.constant) return;
-
-                binding.referencePaths.forEach(refPath => {
-                    const callExprPath = refPath.parentPath;
-                    if (!t.isCallExpression(callExprPath.node) ||
-                        callExprPath.node.callee !== refPath.node ||
-                        callExprPath.node.arguments.length !== params.length) {
-                        return;
-                    }
-
-                    const args = callExprPath.node.arguments;
-                    const newExpr = t.cloneNode(returnArg);
-                    const replaceMap = {};
-
-                    params.forEach((param, index) => {
-                        if (t.isIdentifier(param)) replaceMap[param.name] = args[index];
-                    });
-
-                    traverse(t.file(t.program([t.expressionStatement(newExpr)])), {
-                        Identifier(innerPath) {
-                            const pName = innerPath.node.name;
-                            if (replaceMap.hasOwnProperty(pName)) {
-                                innerPath.replaceWith(t.cloneNode(replaceMap[pName]));
-                                innerPath.skip();
-                            }
-                        },
-                        noScope: true
-                    });
-
-                    callExprPath.replaceWith(newExpr);
-                    changed = true;
-                });
-            }
-        });
+    const binding = scopePath.scope.getBinding(oldName);
+    if (!binding) {
+        return false;
     }
 
-    // =======================================================
-    // 关键修复步骤：重新生成代码并重新解析 (Flush AST)
-    // =======================================================
-    // 此时内存中的 AST 可能包含大量已经断开连接的节点导致的“幽灵引用”。
-    // 我们将代码生成出来，这会自动丢弃所有不在树上的节点。
-    // 然后重新解析，得到一个干净的、引用计数准确的 AST。
-    let cleanCode = generator(ast).code;
-    ast = parser.parse(cleanCode);
+    const hasOwnBinding = typeof binding.scope.hasOwnBinding === 'function'
+        ? binding.scope.hasOwnBinding(newName)
+        : binding.scope.hasBinding(newName);
+    if (hasOwnBinding && oldName !== newName) {
+        return false;
+    }
 
-    // =======================================================
-    // 阶段二：清理死代码 (Cleanup)
-    // =======================================================
+    binding.scope.rename(oldName, newName);
+    return true;
+}
 
-    let cleanupChanged = true;
-    let cleanupLoopCount = 0;
+function hasAppZeroProperty(node) {
+    if (!t.isObjectExpression(node)) {
+        return false;
+    }
 
-    while (cleanupChanged && cleanupLoopCount < 50) {
-        cleanupChanged = false;
-        cleanupLoopCount++;
+    return node.properties.some(prop =>
+        t.isObjectProperty(prop) &&
+        (
+            (!prop.computed && t.isIdentifier(prop.key, { name: 'app' })) ||
+            t.isStringLiteral(prop.key, { value: 'app' })
+        ) &&
+        t.isNumericLiteral(prop.value, { value: 0 })
+    );
+}
 
-        traverse(ast, {
-            FunctionDeclaration(path) {
-                const fnName = path.node.id.name;
-                const binding = path.scope.getBinding(fnName);
+function isWebpackRequireAssignment(statementPath, propertyName) {
+    if (!statementPath?.isExpressionStatement()) return false;
+    const expression = statementPath.get('expression');
+    if (!expression.isAssignmentExpression({ operator: '=' })) return false;
+    const left = expression.get('left');
+    return (
+        left.isMemberExpression() &&
+        left.get('object').isIdentifier({ name: '__webpack_require__' }) &&
+        getStaticMemberName(left.node) === propertyName
+    );
+}
 
-                // 如果没有 binding，说明是个很奇怪的孤立节点，或者已经被移除
-                if (!binding) return;
+function functionContainsEntryRequireCall(functionPath) {
+    let found = false;
 
-                // 策略 A：基于 AST 的智能引用检查 (现在因为 Re-parse 变准了)
-                const externalRefs = binding.referencePaths.filter(refPath => {
-                    return !refPath.findParent(p => p === path);
-                });
+    functionPath.traverse({
+        CallExpression(path) {
+            if (!t.isIdentifier(path.node.callee, { name: '__webpack_require__' })) {
+                return;
+            }
 
-                if (externalRefs.length === 0) {
-                    path.remove();
-                    cleanupChanged = true;
-                    return; // 删掉了就不用执行策略 B 了
-                }
+            const [arg] = path.node.arguments;
+            if (
+                t.isAssignmentExpression(arg, { operator: '=' }) &&
+                t.isMemberExpression(arg.left) &&
+                t.isIdentifier(arg.left.object, { name: '__webpack_require__' }) &&
+                getStaticMemberName(arg.left) === 's'
+            ) {
+                found = true;
+                path.stop();
+            }
+        }
+    });
 
-                // 策略 B：暴力文本检查 (响应你的要求)
-                // 如果 AST 依然因为某种原因抽风 (比如 Scope 没更新)，我们用正则表达式检查
-                // 条件：
-                // 1. 函数名比较长 (避免误伤变量 'a', 'b')，混淆名通常 > 3 字符
-                // 2. 整个 sourceCode 里，这个名字出现的次数 == 1 (只有定义处)
-                // 注意：这种方法比较耗时，但对于解决最后几个顽固分子很有效
+    return found;
+}
 
-                if (fnName.length > 3 && fnName.startsWith('_0x')) {
-                    // 这里我们需要当前的源码字符串。由于 traverse 过程中 ast 在变，
-                    // 每次 generate 会很慢。但我们可以只在 externalRefs > 0 但看起来很可疑时做。
+function collectReferencedCandidateNames(functionPath, candidateNames) {
+    const usedNames = new Set();
 
-                    // 简单的正则匹配次数
-                    const regex = new RegExp(fnName.replace('$', '\\$'), 'g');
-                    // 注意：这里用的是刚生成的 cleanCode，可能略有滞后，但对于清理阶段足够了
-                    // 更好的方式是只在最后做一次暴力清理，但这里放在循环里也行
-                    const matchCount = (cleanCode.match(regex) || []).length;
+    functionPath.traverse({
+        Identifier(path) {
+            if (!path.isReferencedIdentifier()) return;
+            if (!candidateNames.has(path.node.name)) return;
+            usedNames.add(path.node.name);
+        }
+    });
 
-                    // 如果文本里只出现了一次（就是函数定义本身），那就强制删除
-                    if (matchCount === 1) {
-                        console.log(`[Force Delete] 强制删除僵尸函数: ${fnName}`);
-                        path.remove();
-                        cleanupChanged = true;
-                    }
+    return usedNames;
+}
+
+function renameWebpackRuntimeScaffold(sourceCode) {
+    const ast = parser.parse(sourceCode, { sourceType: 'module' });
+    let loaderPath = null;
+    let renameCount = 0;
+
+    traverse(ast, {
+        FunctionDeclaration(path) {
+            if (path.node.id && path.node.id.name === '__webpack_require__') {
+                loaderPath = path;
+                path.stop();
+            }
+        }
+    });
+
+    if (!loaderPath) {
+        console.log("Webpack runtime scaffold rename skipped: __webpack_require__ not found.");
+        return sourceCode;
+    }
+
+    const runtimeScopePath = loaderPath.parentPath;
+    const bodyPaths = runtimeScopePath.get('body');
+    const appZeroObjectNames = new Set();
+    const arrayNames = new Set();
+    let modulesName = null;
+    let installedModulesName = null;
+    let webpackJsonpCallbackName = null;
+    let jsonpArrayName = null;
+    let checkDeferredModulesPath = null;
+    let webpackJsonpCallbackPath = null;
+    let requireEFunctionPath = null;
+    let requireOeFunctionPath = null;
+
+    for (const statementPath of bodyPaths) {
+        if (statementPath.isVariableDeclaration()) {
+            for (const declaratorPath of statementPath.get('declarations')) {
+                const idPath = declaratorPath.get('id');
+                const initPath = declaratorPath.get('init');
+                if (!idPath.isIdentifier()) continue;
+
+                if (initPath.isArrayExpression()) {
+                    arrayNames.add(idPath.node.name);
+                } else if (hasAppZeroProperty(initPath.node)) {
+                    appZeroObjectNames.add(idPath.node.name);
                 }
             }
-        });
+            continue;
+        }
 
-        // 如果发生了改变，更新 cleanCode，以便下一轮暴力检查使用
-        if (cleanupChanged) {
-            cleanCode = generator(ast).code;
+        if (statementPath.isFunctionDeclaration() && functionContainsEntryRequireCall(statementPath)) {
+            checkDeferredModulesPath = statementPath;
+            continue;
+        }
+
+        if (!statementPath.isExpressionStatement()) {
+            continue;
+        }
+
+        const expressionPath = statementPath.get('expression');
+        if (!expressionPath.isAssignmentExpression({ operator: '=' })) {
+            continue;
+        }
+
+        const leftPath = expressionPath.get('left');
+        const rightPath = expressionPath.get('right');
+
+        if (
+            leftPath.isMemberExpression() &&
+            leftPath.get('object').isIdentifier({ name: '__webpack_require__' })
+        ) {
+            const helperName = getStaticMemberName(leftPath.node);
+
+            if (helperName === 'm' && rightPath.isIdentifier()) {
+                modulesName = rightPath.node.name;
+            } else if (helperName === 'c' && rightPath.isIdentifier()) {
+                installedModulesName = rightPath.node.name;
+            } else if (helperName === 'e' && rightPath.isFunctionExpression()) {
+                requireEFunctionPath = rightPath;
+            } else if (helperName === 'oe' && rightPath.isFunctionExpression()) {
+                requireOeFunctionPath = rightPath;
+            }
+
+            continue;
+        }
+
+        if (
+            leftPath.isMemberExpression() &&
+            getStaticMemberName(leftPath.node) === 'push' &&
+            leftPath.get('object').isIdentifier() &&
+            rightPath.isIdentifier()
+        ) {
+            jsonpArrayName = leftPath.get('object').node.name;
+            webpackJsonpCallbackName = rightPath.node.name;
         }
     }
 
-    return cleanCode;
-};
+    if (modulesName && renameBinding(runtimeScopePath, modulesName, 'modules')) {
+        renameCount++;
+    }
 
-var removeObfConstants = (sourceCode) => {
-    let ast = parser.parse(sourceCode);
+    if (installedModulesName && renameBinding(runtimeScopePath, installedModulesName, 'installedModules')) {
+        renameCount++;
+    }
 
-    // 设置一个标志位，用于判断AST是否发生了改变
-    let changed = true;
-    let loopLimit = 200; // 防止死循环，设置最大轮数
+    if (jsonpArrayName && renameBinding(runtimeScopePath, jsonpArrayName, 'jsonpArray')) {
+        renameCount++;
+    }
 
-    // 循环执行，直到没有新的替换发生，或者达到最大轮数
-    while (changed && loopLimit > 0) {
-        changed = false;
-        loopLimit--;
+    if (checkDeferredModulesPath?.node.id && renameBinding(runtimeScopePath, checkDeferredModulesPath.node.id.name, 'checkDeferredModules')) {
+        renameCount++;
+    }
 
-        traverse(ast, {
-            // 1. 处理字符串拼接 "str" + "ing"
-            BinaryExpression(path) {
-                const { left, right, operator } = path.node;
+    if (webpackJsonpCallbackName && renameBinding(runtimeScopePath, webpackJsonpCallbackName, 'webpackJsonpCallback')) {
+        renameCount++;
+    }
 
-                // 只处理 "+" 运算符
-                if (operator !== '+') return;
+    if (t.isIdentifier(loaderPath.node.params[0]) && renameBinding(loaderPath, loaderPath.node.params[0].name, 'moduleId')) {
+        renameCount++;
+    }
 
-                // 检查左边和右边是否都是字面量 (StringLiteral, NumericLiteral 等)
-                if (t.isLiteral(left) && t.isLiteral(right)) {
-                    // 确保是字符串拼接 (通常至少有一边是字符串)
-                    if (typeof left.value === 'string' || typeof right.value === 'string') {
-                        // 计算结果
-                        const result = left.value + right.value;
-                        // 替换节点为新的字符串常量
-                        path.replaceWith(t.stringLiteral(result));
-                        changed = true;
+    for (const statementPath of loaderPath.get('body.body')) {
+        if (!statementPath.isVariableDeclaration()) continue;
+        for (const declaratorPath of statementPath.get('declarations')) {
+            if (!declaratorPath.get('id').isIdentifier()) continue;
+            if (renameBinding(loaderPath, declaratorPath.node.id.name, 'module')) {
+                renameCount++;
+            }
+            break;
+        }
+        break;
+    }
+
+    if (requireEFunctionPath && t.isIdentifier(requireEFunctionPath.node.params[0])) {
+        if (renameBinding(requireEFunctionPath, requireEFunctionPath.node.params[0].name, 'chunkId')) {
+            renameCount++;
+        }
+
+        for (const statementPath of requireEFunctionPath.get('body.body')) {
+            if (!statementPath.isVariableDeclaration()) continue;
+            for (const declaratorPath of statementPath.get('declarations')) {
+                if (
+                    declaratorPath.get('id').isIdentifier() &&
+                    declaratorPath.get('init').isArrayExpression() &&
+                    renameBinding(requireEFunctionPath, declaratorPath.node.id.name, 'promises')
+                ) {
+                    renameCount++;
+                }
+                break;
+            }
+            break;
+        }
+    }
+
+    if (requireOeFunctionPath && t.isIdentifier(requireOeFunctionPath.node.params[0])) {
+        if (renameBinding(requireOeFunctionPath, requireOeFunctionPath.node.params[0].name, 'error')) {
+            renameCount++;
+        }
+    }
+
+    if (webpackJsonpCallbackName) {
+        const callbackBinding = runtimeScopePath.scope.getBinding('webpackJsonpCallback') || runtimeScopePath.scope.getBinding(webpackJsonpCallbackName);
+        if (callbackBinding?.path?.isFunctionDeclaration()) {
+            webpackJsonpCallbackPath = callbackBinding.path;
+        }
+    }
+
+    if (!webpackJsonpCallbackPath) {
+        for (const statementPath of bodyPaths) {
+            if (!statementPath.isFunctionDeclaration() || !statementPath.node.id) continue;
+            if (statementPath.node.id.name === 'webpackJsonpCallback') {
+                webpackJsonpCallbackPath = statementPath;
+                break;
+            }
+        }
+    }
+
+    if (webpackJsonpCallbackPath) {
+        if (t.isIdentifier(webpackJsonpCallbackPath.node.params[0]) && renameBinding(webpackJsonpCallbackPath, webpackJsonpCallbackPath.node.params[0].name, 'data')) {
+            renameCount++;
+        }
+
+        const callbackParamName = t.isIdentifier(webpackJsonpCallbackPath.node.params[0])
+            ? webpackJsonpCallbackPath.node.params[0].name
+            : null;
+
+        if (callbackParamName) {
+            webpackJsonpCallbackPath.traverse({
+                VariableDeclarator(path) {
+                    if (!path.get('id').isIdentifier()) return;
+                    const initNode = path.node.init;
+                    if (
+                        t.isMemberExpression(initNode) &&
+                        t.isIdentifier(initNode.object, { name: callbackParamName }) &&
+                        initNode.computed &&
+                        t.isNumericLiteral(initNode.property)
+                    ) {
+                        const targetNames = {
+                            0: 'chunkIds',
+                            1: 'moreModules',
+                            2: 'executeModules'
+                        };
+                        const nextName = targetNames[initNode.property.value];
+                        if (nextName && renameBinding(webpackJsonpCallbackPath, path.node.id.name, nextName)) {
+                            renameCount++;
+                        }
+                    } else if (
+                        t.isArrayExpression(initNode) &&
+                        initNode.elements.length === 0 &&
+                        renameBinding(webpackJsonpCallbackPath, path.node.id.name, 'resolves')
+                    ) {
+                        renameCount++;
                     }
                 }
-            },
+            });
+        }
 
-            // 2. 处理属性访问 "string"["length"] 或 "string".length
-            MemberExpression(path) {
-                const { object, property, computed } = path.node;
-
-                // 目标必须是字符串常量
-                if (!t.isStringLiteral(object)) return;
-
-                // 获取属性名
-                let propName;
-                if (computed && t.isStringLiteral(property)) {
-                    // 形式: "str"['length']
-                    propName = property.value;
-                } else if (!computed && t.isIdentifier(property)) {
-                    // 形式: "str".length
-                    propName = property.name;
+        for (const statementPath of bodyPaths) {
+            if (!statementPath.isVariableDeclaration()) continue;
+            for (const declaratorPath of statementPath.get('declarations')) {
+                if (!declaratorPath.get('id').isIdentifier() || !declaratorPath.get('init').isIdentifier()) {
+                    continue;
                 }
 
-                // 处理 .length 属性
-                if (propName === 'length') {
-                    const result = object.value.length;
-                    // 替换为数字常量
-                    path.replaceWith(t.numericLiteral(result));
+                const binding = runtimeScopePath.scope.getBinding(declaratorPath.node.id.name);
+                if (
+                    binding?.referencePaths?.some(refPath => refPath.findParent(parent => parent === webpackJsonpCallbackPath))
+                ) {
+                    if (renameBinding(runtimeScopePath, declaratorPath.node.id.name, 'parentJsonpFunction')) {
+                        renameCount++;
+                    }
+                    if (renameBinding(runtimeScopePath, declaratorPath.node.init.name, 'oldJsonpFunction')) {
+                        renameCount++;
+                    }
+                }
+            }
+        }
+    }
+
+    if (checkDeferredModulesPath) {
+        const usedObjectNames = collectReferencedCandidateNames(checkDeferredModulesPath, appZeroObjectNames);
+        const usedArrayNames = collectReferencedCandidateNames(checkDeferredModulesPath, arrayNames);
+        const [installedChunksName] = Array.from(usedObjectNames);
+        const [deferredModulesName] = Array.from(usedArrayNames);
+
+        if (installedChunksName && renameBinding(runtimeScopePath, installedChunksName, 'installedChunks')) {
+            renameCount++;
+        }
+
+        if (deferredModulesName && renameBinding(runtimeScopePath, deferredModulesName, 'deferredModules')) {
+            renameCount++;
+        }
+
+        for (const objectName of appZeroObjectNames) {
+            if (objectName === installedChunksName) continue;
+            if (renameBinding(runtimeScopePath, objectName, 'installedCssChunks')) {
+                renameCount++;
+                break;
+            }
+        }
+    }
+
+    console.log(`Webpack runtime scaffold renamed: ${renameCount} binding(s).`);
+    return generator(ast, { jsescOption: { minimal: true } }).code;
+}
+
+var normalizeRuntimeHelperDicts = (sourceCode) => {
+    const ast = parser.parse(sourceCode, { sourceType: 'module' });
+    const helperNames = new Set();
+    let splitCount = 0;
+    let renameCount = 0;
+    let dotCount = 0;
+
+    traverse(ast, {
+        FunctionDeclaration(path) {
+            if (!path.node.id || !path.inList) return;
+
+            const funcName = path.node.id.name;
+            const nextPath = path.getSibling(path.key + 1);
+            if (!nextPath?.isExpressionStatement()) return;
+            if (!t.isSequenceExpression(nextPath.node.expression)) return;
+
+            const expressions = nextPath.node.expression.expressions;
+            if (expressions.length < 4) return;
+            if (!expressions.every(node => isFunctionHelperAssignment(node, funcName))) return;
+
+            const helperKeys = expressions.map(node => getStaticMemberName(node.left));
+            const looksLikeWebpackRuntime = WEBPACK_RUNTIME_KEYS.every(key => helperKeys.includes(key));
+
+            let normalizedName = funcName;
+            if (
+                looksLikeWebpackRuntime &&
+                funcName !== '__webpack_require__' &&
+                !path.scope.hasBinding('__webpack_require__')
+            ) {
+                path.scope.rename(funcName, '__webpack_require__');
+                normalizedName = '__webpack_require__';
+                renameCount++;
+            }
+
+            helperNames.add(normalizedName);
+
+            const splitStatements = nextPath.node.expression.expressions.map(node =>
+                t.expressionStatement(node)
+            );
+            nextPath.replaceWithMultiple(splitStatements);
+            splitCount++;
+        }
+    });
+
+    traverse(ast, {
+        MemberExpression(path) {
+            if (!t.isIdentifier(path.node.object)) return;
+            if (!helperNames.has(path.node.object.name)) return;
+
+            const propName = getStaticMemberName(path.node);
+            if (!isDotSafeProperty(propName)) return;
+            if (!path.node.computed && t.isIdentifier(path.node.property, { name: propName })) return;
+
+            path.node.computed = false;
+            path.node.property = t.identifier(propName);
+            dotCount++;
+        }
+    });
+
+    console.log(
+        `Runtime helpers normalized: split ${splitCount} dict chains, renamed ${renameCount} loader(s), converted ${dotCount} helper members.`
+    );
+
+    return generator(ast, { jsescOption: { minimal: true } }).code;
+}
+
+var inlineRuntimeHelperRefs = (sourceCode) => {
+    const ast = parser.parse(sourceCode, { sourceType: 'module' });
+    let inlineCounts = {
+        o: 0,
+        d: 0,
+        r: 0
+    };
+    let flattenedSeqCount = 0;
+
+    traverse(ast, {
+        CallExpression(path) {
+            const callee = path.node.callee;
+            if (!t.isMemberExpression(callee)) return;
+            if (!t.isIdentifier(callee.object, { name: '__webpack_require__' })) return;
+
+            const helperName = getStaticMemberName(callee);
+            const args = path.node.arguments;
+
+            if (helperName === 'o' && args.length === 2) {
+                path.replaceWith(makeHasOwnPropertyCall(args[0], args[1]));
+                inlineCounts.o++;
+                path.skip();
+                return;
+            }
+
+            if (helperName === 'd' && args.length === 3) {
+                path.replaceWith(makeDefineGetterExpression(args[0], args[1], args[2]));
+                inlineCounts.d++;
+                path.skip();
+                return;
+            }
+
+            if (helperName === 'r' && args.length === 1) {
+                path.replaceWith(makeMarkEsModuleExpression(args[0]));
+                inlineCounts.r++;
+                path.skip();
+            }
+        }
+    });
+
+    traverse(ast, {
+        SequenceExpression(path) {
+            const flatExpressions = [];
+            let changed = false;
+
+            for (const expr of path.node.expressions) {
+                if (t.isSequenceExpression(expr)) {
+                    flatExpressions.push(...expr.expressions);
                     changed = true;
+                } else {
+                    flatExpressions.push(expr);
+                }
+            }
+
+            if (changed) {
+                path.node.expressions = flatExpressions;
+                flattenedSeqCount++;
+            }
+        }
+    });
+
+    console.log(
+        `Runtime helper refs simplified: inlined o=${inlineCounts.o}, d=${inlineCounts.d}, r=${inlineCounts.r}, flattened ${flattenedSeqCount} sequence(s).`
+    );
+
+    return generator(ast, { jsescOption: { minimal: true } }).code;
+}
+
+function flattenSequenceExpressions(node, result = []) {
+    if (t.isSequenceExpression(node)) {
+        for (const expression of node.expressions) {
+            flattenSequenceExpressions(expression, result);
+        }
+        return result;
+    }
+
+    result.push(node);
+    return result;
+}
+
+function flattenLogicalAndExpressions(node, result = []) {
+    if (t.isLogicalExpression(node, { operator: '&&' })) {
+        flattenLogicalAndExpressions(node.left, result);
+        flattenLogicalAndExpressions(node.right, result);
+        return result;
+    }
+
+    result.push(node);
+    return result;
+}
+
+function getStaticPropertyKeyName(node) {
+    if (t.isStringLiteral(node) || t.isNumericLiteral(node)) {
+        return String(node.value);
+    }
+
+    if (t.isIdentifier(node)) {
+        return node.name;
+    }
+
+    return null;
+}
+
+function isObjectPrototypeHasOwnPropertyCall(node, objectName) {
+    if (!t.isCallExpression(node) || node.arguments.length !== 2) {
+        return false;
+    }
+
+    const callee = node.callee;
+    if (!t.isMemberExpression(callee) || !t.isIdentifier(callee.property, { name: 'call' })) {
+        return false;
+    }
+
+    const hasOwnPropertyMember = callee.object;
+    if (
+        !t.isMemberExpression(hasOwnPropertyMember) ||
+        !t.isIdentifier(hasOwnPropertyMember.property, { name: 'hasOwnProperty' })
+    ) {
+        return false;
+    }
+
+    const prototypeMember = hasOwnPropertyMember.object;
+    if (
+        !t.isMemberExpression(prototypeMember) ||
+        !t.isIdentifier(prototypeMember.object, { name: 'Object' }) ||
+        !t.isIdentifier(prototypeMember.property, { name: 'prototype' })
+    ) {
+        return false;
+    }
+
+    return t.isIdentifier(node.arguments[0], { name: objectName });
+}
+
+function isObjectDefinePropertyCall(node, objectName) {
+    return t.isCallExpression(node) &&
+        t.isMemberExpression(node.callee) &&
+        t.isIdentifier(node.callee.object, { name: 'Object' }) &&
+        t.isIdentifier(node.callee.property, { name: 'defineProperty' }) &&
+        node.arguments.length >= 3 &&
+        t.isIdentifier(node.arguments[0], { name: objectName });
+}
+
+function extractGetterReturnExpression(node) {
+    if (!(t.isFunctionExpression(node) || t.isArrowFunctionExpression(node))) {
+        return null;
+    }
+
+    if (t.isBlockStatement(node.body)) {
+        if (node.body.body.length !== 1 || !t.isReturnStatement(node.body.body[0]) || !node.body.body[0].argument) {
+            return null;
+        }
+        return node.body.body[0].argument;
+    }
+
+    return node.body;
+}
+
+function extractWebpackExportDefinition(expression, exportsParamName) {
+    let definePropertyCall = null;
+
+    if (
+        t.isLogicalExpression(expression, { operator: '||' }) &&
+        isObjectPrototypeHasOwnPropertyCall(expression.left, exportsParamName) &&
+        isObjectDefinePropertyCall(expression.right, exportsParamName)
+    ) {
+        definePropertyCall = expression.right;
+    } else if (t.isLogicalExpression(expression, { operator: '&&' })) {
+        const logicalParts = flattenLogicalAndExpressions(expression);
+        const lastPart = logicalParts[logicalParts.length - 1];
+        if (isObjectDefinePropertyCall(lastPart, exportsParamName)) {
+            definePropertyCall = lastPart;
+        }
+    } else if (isObjectDefinePropertyCall(expression, exportsParamName)) {
+        definePropertyCall = expression;
+    }
+
+    if (!definePropertyCall) {
+        return null;
+    }
+
+    const [, propertyNode, descriptorNode] = definePropertyCall.arguments;
+    if (!t.isObjectExpression(descriptorNode)) {
+        return null;
+    }
+
+    const propertyName = getStaticPropertyKeyName(propertyNode);
+    const getterProperty = descriptorNode.properties.find(property =>
+        t.isObjectProperty(property) &&
+        getStaticPropertyKeyName(property.key) === 'get'
+    );
+    const valueProperty = descriptorNode.properties.find(property =>
+        t.isObjectProperty(property) &&
+        getStaticPropertyKeyName(property.key) === 'value'
+    );
+
+    if (propertyName === '__esModule') {
+        return { type: 'marker' };
+    }
+
+    if (
+        t.isMemberExpression(propertyNode) &&
+        t.isIdentifier(propertyNode.object, { name: 'Symbol' }) &&
+        t.isIdentifier(propertyNode.property, { name: 'toStringTag' })
+    ) {
+        return { type: 'marker' };
+    }
+
+    if (getterProperty) {
+        const returnExpression = extractGetterReturnExpression(getterProperty.value);
+        if (!returnExpression || propertyName === null) {
+            return null;
+        }
+
+        return {
+            type: 'getter',
+            exportName: propertyName,
+            valueExpression: returnExpression
+        };
+    }
+
+    if (valueProperty && propertyName !== null) {
+        return {
+            type: 'value',
+            exportName: propertyName,
+            valueExpression: valueProperty.value
+        };
+    }
+
+    return null;
+}
+
+function isModuleExportsMember(node, moduleParamName) {
+    if (!moduleParamName) {
+        return false;
+    }
+
+    return t.isMemberExpression(node) &&
+        t.isIdentifier(node.object, { name: moduleParamName }) &&
+        getStaticMemberName(node) === 'exports';
+}
+
+function isNamedExportMember(node, objectName) {
+    if (!objectName) {
+        return false;
+    }
+
+    return t.isMemberExpression(node) &&
+        t.isIdentifier(node.object, { name: objectName }) &&
+        getStaticMemberName(node) !== null;
+}
+
+function extractWebpackAssignmentExport(expression, moduleParamName, exportsParamName) {
+    if (!t.isAssignmentExpression(expression, { operator: '=' })) {
+        return null;
+    }
+
+    if (isModuleExportsMember(expression.left, moduleParamName)) {
+        return {
+            type: 'moduleExports',
+            valueExpression: expression.right
+        };
+    }
+
+    if (isNamedExportMember(expression.left, exportsParamName)) {
+        return {
+            type: 'namedExport',
+            exportName: getStaticMemberName(expression.left),
+            valueExpression: expression.right
+        };
+    }
+
+    if (
+        t.isMemberExpression(expression.left) &&
+        t.isAssignmentExpression(expression.left.object, { operator: '=' }) &&
+        isModuleExportsMember(expression.left.object.left, moduleParamName)
+    ) {
+        return {
+            type: 'moduleExportsAssignmentWithProperty',
+            moduleValueExpression: expression.left.object.right,
+            propertyName: getStaticMemberName(expression.left),
+            propertyValueExpression: expression.right
+        };
+    }
+
+    return null;
+}
+
+function buildWebpackNamedPropertyAccess(objectExpression, propertyName) {
+    const useComputed = !/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(propertyName);
+    return t.memberExpression(
+        t.cloneNode(objectExpression, true),
+        useComputed ? t.stringLiteral(propertyName) : t.identifier(propertyName),
+        useComputed
+    );
+}
+
+function buildWebpackModuleExportsAssignmentWithPropertyExpression(assignmentExport) {
+    return t.assignmentExpression(
+        '=',
+        buildWebpackNamedPropertyAccess(assignmentExport.moduleValueExpression, assignmentExport.propertyName),
+        t.cloneNode(assignmentExport.propertyValueExpression, true)
+    );
+}
+
+function buildExpressionFromExpressions(expressions) {
+    if (!Array.isArray(expressions) || expressions.length === 0) {
+        return null;
+    }
+
+    return expressions.length === 1
+        ? expressions[0]
+        : t.sequenceExpression(expressions);
+}
+
+function buildExpressionStatementFromExpressions(expressions) {
+    const expression = buildExpressionFromExpressions(expressions);
+    return expression ? t.expressionStatement(expression) : null;
+}
+
+function unwrapIgnorableStatementExpression(node) {
+    let currentNode = node;
+
+    while (t.isParenthesizedExpression(currentNode)) {
+        currentNode = currentNode.expression;
+    }
+
+    while (
+        t.isUnaryExpression(currentNode) &&
+        ['!', 'void', '+', '-', '~'].includes(currentNode.operator)
+    ) {
+        currentNode = currentNode.argument;
+    }
+
+    return currentNode;
+}
+
+function getIifeFunctionNode(expression) {
+    const coreExpression = unwrapIgnorableStatementExpression(expression);
+    if (!t.isCallExpression(coreExpression)) {
+        return null;
+    }
+
+    if (t.isFunctionExpression(coreExpression.callee) || t.isArrowFunctionExpression(coreExpression.callee)) {
+        return {
+            coreExpression,
+            functionNode: coreExpression.callee
+        };
+    }
+
+    if (
+        t.isMemberExpression(coreExpression.callee) &&
+        (t.isIdentifier(coreExpression.callee.property, { name: 'call' }) || t.isIdentifier(coreExpression.callee.property, { name: 'apply' })) &&
+        (t.isFunctionExpression(coreExpression.callee.object) || t.isArrowFunctionExpression(coreExpression.callee.object))
+    ) {
+        return {
+            coreExpression,
+            functionNode: coreExpression.callee.object
+        };
+    }
+
+    return null;
+}
+
+function rewriteNestedWebpackExportIifeExpression(expression, moduleParamName, exportsParamName) {
+    const iifeInfo = getIifeFunctionNode(expression);
+    if (!iifeInfo || !t.isBlockStatement(iifeInfo.functionNode.body)) {
+        return null;
+    }
+
+    const clonedExpression = t.cloneNode(iifeInfo.coreExpression, true);
+    const clonedIifeInfo = getIifeFunctionNode(clonedExpression);
+    if (!clonedIifeInfo || !t.isBlockStatement(clonedIifeInfo.functionNode.body)) {
+        return null;
+    }
+
+    const nestedExportEntries = [];
+    const rewrittenStatements = [];
+    let nestedModuleExportsExpression = null;
+    let changed = false;
+
+    for (const originalStatement of clonedIifeInfo.functionNode.body.body) {
+        if (!t.isExpressionStatement(originalStatement)) {
+            rewrittenStatements.push(t.cloneNode(originalStatement, true));
+            continue;
+        }
+
+        const residualExpressions = [];
+
+        for (const nestedExpression of flattenSequenceExpressions(originalStatement.expression)) {
+            const exportDefinition = exportsParamName
+                ? extractWebpackExportDefinition(nestedExpression, exportsParamName)
+                : null;
+            if (exportDefinition) {
+                changed = true;
+
+                if (exportDefinition.type === 'getter' || exportDefinition.type === 'value') {
+                    nestedExportEntries.push({
+                        exportName: exportDefinition.exportName,
+                        valueExpression: exportDefinition.valueExpression
+                    });
+                }
+                continue;
+            }
+
+            const assignmentExport = moduleParamName || exportsParamName
+                ? extractWebpackAssignmentExport(nestedExpression, moduleParamName, exportsParamName)
+                : null;
+            if (assignmentExport) {
+                changed = true;
+
+                if (assignmentExport.type === 'moduleExports') {
+                    nestedModuleExportsExpression = t.cloneNode(assignmentExport.valueExpression, true);
+                    continue;
                 }
 
-                // (可选) 如果需要处理 "abc"[0] 这种索引访问，可以在这里加逻辑
-            },
+                if (assignmentExport.type === 'namedExport') {
+                    nestedExportEntries.push({
+                        exportName: assignmentExport.exportName,
+                        valueExpression: assignmentExport.valueExpression
+                    });
+                    continue;
+                }
 
-            // 3. 处理变量常量替换 (之前的逻辑)
-            VariableDeclarator(path) {
-                const { id, init } = path.node;
+                if (assignmentExport.type === 'moduleExportsAssignmentWithProperty') {
+                    nestedModuleExportsExpression = t.cloneNode(assignmentExport.moduleValueExpression, true);
+                    residualExpressions.push(buildWebpackModuleExportsAssignmentWithPropertyExpression(assignmentExport));
+                    continue;
+                }
+            }
 
-                // 必须有初始值，且初始值必须是 字面量 (String, Number, Boolean)
-                // 这里放宽了条件，不仅支持字符串，也支持数字等，只要是Literal即可
-                if (!init || !t.isLiteral(init)) return;
-                if (!t.isIdentifier(id)) return;
+            residualExpressions.push(t.cloneNode(nestedExpression, true));
+        }
 
-                const binding = path.scope.getBinding(id.name);
-                if (!binding || !binding.constant) return;
+        const rewrittenStatement = buildExpressionStatementFromExpressions(residualExpressions);
+        if (rewrittenStatement) {
+            rewrittenStatements.push(rewrittenStatement);
+        }
+    }
 
-                // 如果该变量没有被引用，说明是死代码（或者已经被我们在之前的循环中替换完了）
-                // 可以直接删除，净化代码
-                if (binding.referencePaths.length === 0) {
-                    path.remove();
-                    changed = true;
+    if (!changed) {
+        return null;
+    }
+
+    clonedIifeInfo.functionNode.body = t.blockStatement(rewrittenStatements);
+    return {
+        expression: clonedExpression,
+        exportEntries: nestedExportEntries,
+        moduleExportsExpression: nestedModuleExportsExpression
+    };
+}
+
+function makeReadableWebpackExportsExpression(exportEntries) {
+    return t.objectExpression(
+        exportEntries.map(entry => t.objectMethod(
+            'get',
+            /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(entry.exportName)
+                ? t.identifier(entry.exportName)
+                : t.stringLiteral(entry.exportName),
+            [],
+            t.blockStatement([
+                t.returnStatement(t.cloneNode(entry.valueExpression, true))
+            ]),
+            false,
+            false
+        ))
+    );
+}
+
+function moduleBodyUsesParam(statements, paramName) {
+    if (!paramName) {
+        return false;
+    }
+
+    const tempAst = t.file(t.program(statements.map(statement => t.cloneNode(statement, true))));
+    let used = false;
+
+    traverse(tempAst, {
+        Identifier(path) {
+            if (!path.isReferencedIdentifier({ name: paramName })) {
+                return;
+            }
+
+            if (path.scope.hasBinding(paramName)) {
+                return;
+            }
+
+            used = true;
+            path.stop();
+        }
+    });
+
+    return used;
+}
+
+function buildFlattenedWebpackModuleNodes(functionNode, moduleId) {
+    if (!functionNode.id || !t.isIdentifier(functionNode.id)) {
+        return null;
+    }
+
+    const factoryName = functionNode.id.name;
+    const moduleParamName = t.isIdentifier(functionNode.params[0]) ? functionNode.params[0].name : null;
+    const exportsParamName = t.isIdentifier(functionNode.params[1]) ? functionNode.params[1].name : null;
+    const exportEntries = [];
+    const bodyStatements = [];
+    let moduleExportsExpression = null;
+
+    for (const originalStatement of functionNode.body.body) {
+        if (!t.isExpressionStatement(originalStatement)) {
+            bodyStatements.push(t.cloneNode(originalStatement, true));
+            continue;
+        }
+
+        const residualExpressions = [];
+
+        for (const expression of flattenSequenceExpressions(originalStatement.expression)) {
+            const exportDefinition = exportsParamName
+                ? extractWebpackExportDefinition(expression, exportsParamName)
+                : null;
+            if (exportDefinition) {
+                if (exportDefinition.type === 'getter' || exportDefinition.type === 'value') {
+                    exportEntries.push({
+                        exportName: exportDefinition.exportName,
+                        valueExpression: exportDefinition.valueExpression
+                    });
+                }
+                continue;
+            }
+
+            const assignmentExport = moduleParamName || exportsParamName
+                ? extractWebpackAssignmentExport(expression, moduleParamName, exportsParamName)
+                : null;
+            if (assignmentExport) {
+                if (assignmentExport.type === 'moduleExports') {
+                    moduleExportsExpression = t.cloneNode(assignmentExport.valueExpression, true);
+                    continue;
+                }
+
+                if (assignmentExport.type === 'namedExport') {
+                    exportEntries.push({
+                        exportName: assignmentExport.exportName,
+                        valueExpression: assignmentExport.valueExpression
+                    });
+                    continue;
+                }
+
+                if (assignmentExport.type === 'moduleExportsAssignmentWithProperty') {
+                    moduleExportsExpression = t.cloneNode(assignmentExport.moduleValueExpression, true);
+                    residualExpressions.push(buildWebpackModuleExportsAssignmentWithPropertyExpression(assignmentExport));
+                    continue;
+                }
+            }
+
+            if (t.isIdentifier(expression) && /^webpack_exports_[A-Za-z0-9_]+$/.test(expression.name)) {
+                continue;
+            }
+
+            residualExpressions.push(t.cloneNode(expression, true));
+        }
+
+        if (residualExpressions.length === 0) {
+            continue;
+        }
+
+        let rewrittenStatement = buildExpressionStatementFromExpressions(residualExpressions);
+        if (!rewrittenStatement) {
+            continue;
+        }
+
+        const rewrittenNestedIife = rewriteNestedWebpackExportIifeExpression(
+            rewrittenStatement.expression,
+            moduleParamName,
+            exportsParamName
+        );
+        if (rewrittenNestedIife) {
+            exportEntries.push(...rewrittenNestedIife.exportEntries);
+            if (rewrittenNestedIife.moduleExportsExpression) {
+                moduleExportsExpression = t.cloneNode(rewrittenNestedIife.moduleExportsExpression, true);
+            }
+            rewrittenStatement = rewrittenNestedIife.expression
+                ? t.expressionStatement(rewrittenNestedIife.expression)
+                : null;
+        }
+
+        if (rewrittenStatement) {
+            bodyStatements.push(rewrittenStatement);
+        }
+    }
+
+    const returnExpression = moduleExportsExpression || (
+        exportEntries.length > 0
+            ? makeReadableWebpackExportsExpression(exportEntries)
+            : t.objectExpression([])
+    );
+    bodyStatements.push(t.returnStatement(returnExpression));
+
+    if (
+        moduleBodyUsesParam(bodyStatements, moduleParamName) ||
+        moduleBodyUsesParam(bodyStatements, exportsParamName)
+    ) {
+        return buildFallbackFlattenedWebpackModuleNodes(functionNode, moduleId);
+    }
+
+    const exportsName = getWebpackModuleExportsName(moduleId);
+    return [
+        t.exportNamedDeclaration(
+            t.variableDeclaration('var', [
+                t.variableDeclarator(
+                    t.identifier(exportsName),
+                    t.callExpression(
+                        t.parenthesizedExpression(
+                            t.arrowFunctionExpression([], t.blockStatement(bodyStatements))
+                        ),
+                        []
+                    )
+                )
+            ]),
+            []
+        ),
+        t.variableDeclaration('var', [
+            t.variableDeclarator(
+                t.identifier(factoryName),
+                t.identifier(exportsName)
+            )
+        ])
+    ];
+}
+
+function buildFallbackFlattenedWebpackModuleNodes(functionNode, moduleId) {
+    if (!functionNode.id || !t.isIdentifier(functionNode.id)) {
+        return null;
+    }
+
+    const factoryName = functionNode.id.name;
+    const moduleParamName = t.isIdentifier(functionNode.params[0]) ? functionNode.params[0].name : null;
+    const exportsParamName = t.isIdentifier(functionNode.params[1]) ? functionNode.params[1].name : null;
+    const exportsName = getWebpackModuleExportsName(moduleId);
+    const sanitizedModuleId = sanitizeModuleIdForIdentifier(moduleId);
+    const moduleHolderName = `__webpack_module_${sanitizedModuleId}`;
+    const exportsHolderName = `__webpack_exports_object_${sanitizedModuleId}`;
+    const bodyStatements = [];
+
+    if (moduleParamName) {
+        bodyStatements.push(
+            t.variableDeclaration('var', [
+                t.variableDeclarator(
+                    t.identifier(moduleHolderName),
+                    t.objectExpression([
+                        t.objectProperty(t.identifier('exports'), t.objectExpression([]))
+                    ])
+                )
+            ])
+        );
+        bodyStatements.push(
+            t.variableDeclaration('var', [
+                t.variableDeclarator(
+                    t.identifier(moduleParamName),
+                    t.identifier(moduleHolderName)
+                )
+            ])
+        );
+
+        if (exportsParamName) {
+            bodyStatements.push(
+                t.variableDeclaration('var', [
+                    t.variableDeclarator(
+                        t.identifier(exportsParamName),
+                        t.memberExpression(
+                            t.identifier(moduleHolderName),
+                            t.identifier('exports')
+                        )
+                    )
+                ])
+            );
+        }
+    } else if (exportsParamName) {
+        bodyStatements.push(
+            t.variableDeclaration('var', [
+                t.variableDeclarator(
+                    t.identifier(exportsHolderName),
+                    t.objectExpression([])
+                )
+            ])
+        );
+        bodyStatements.push(
+            t.variableDeclaration('var', [
+                t.variableDeclarator(
+                    t.identifier(exportsParamName),
+                    t.identifier(exportsHolderName)
+                )
+            ])
+        );
+    }
+
+    for (const statement of functionNode.body.body) {
+        bodyStatements.push(t.cloneNode(statement, true));
+    }
+
+    bodyStatements.push(
+        t.returnStatement(
+            moduleParamName
+                ? t.memberExpression(
+                    t.identifier(moduleHolderName),
+                    t.identifier('exports')
+                )
+                : exportsParamName
+                    ? t.identifier(exportsHolderName)
+                    : t.objectExpression([])
+        )
+    );
+
+    return [
+        t.exportNamedDeclaration(
+            t.variableDeclaration('var', [
+                t.variableDeclarator(
+                    t.identifier(exportsName),
+                    t.callExpression(
+                        t.parenthesizedExpression(
+                            t.arrowFunctionExpression([], t.blockStatement(bodyStatements))
+                        ),
+                        []
+                    )
+                )
+            ]),
+            []
+        ),
+        t.variableDeclaration('var', [
+            t.variableDeclarator(
+                t.identifier(factoryName),
+                t.identifier(exportsName)
+            )
+        ])
+    ];
+}
+
+var flattenWebpackModuleFactories = (sourceCode) => {
+    const ast = parser.parse(sourceCode, { sourceType: 'module' });
+    const functionPaths = new Map();
+    const recordDeclarationPaths = new Map();
+    const recordCallPaths = new Map();
+    const exportDeclarationPaths = new Map();
+    let flattenedCount = 0;
+
+    traverse(ast, {
+        FunctionDeclaration(path) {
+            if (!path.parentPath.isProgram() || !path.node.id) {
+                return;
+            }
+
+            const match = /^webpack_module_(.+)$/.exec(path.node.id.name);
+            if (!match) {
+                return;
+            }
+
+            functionPaths.set(match[1], path);
+        },
+        VariableDeclaration(path) {
+            if (!path.parentPath.isProgram()) {
+                return;
+            }
+
+            for (const declarator of path.node.declarations) {
+                if (!t.isIdentifier(declarator.id)) {
+                    continue;
+                }
+
+                const recordMatch = /^webpack_module_record_(.+)$/.exec(declarator.id.name);
+                if (
+                    recordMatch &&
+                    t.isObjectExpression(declarator.init) &&
+                    declarator.init.properties.length === 1 &&
+                    t.isObjectProperty(declarator.init.properties[0]) &&
+                    getStaticPropertyKeyName(declarator.init.properties[0].key) === 'exports'
+                ) {
+                    recordDeclarationPaths.set(recordMatch[1], path);
+                }
+            }
+        },
+        ExpressionStatement(path) {
+            if (!path.parentPath.isProgram() || !t.isCallExpression(path.node.expression)) {
+                return;
+            }
+
+            const callExpression = path.node.expression;
+            if (!t.isIdentifier(callExpression.callee)) {
+                return;
+            }
+
+            const callMatch = /^webpack_module_(.+)$/.exec(callExpression.callee.name);
+            if (!callMatch) {
+                return;
+            }
+
+            recordCallPaths.set(callMatch[1], path);
+        },
+        ExportNamedDeclaration(path) {
+            if (!path.parentPath.isProgram() || !t.isVariableDeclaration(path.node.declaration)) {
+                return;
+            }
+
+            for (const declarator of path.node.declaration.declarations) {
+                if (!t.isIdentifier(declarator.id)) {
+                    continue;
+                }
+
+                const exportMatch = /^webpack_exports_(.+)$/.exec(declarator.id.name);
+                if (exportMatch) {
+                    exportDeclarationPaths.set(exportMatch[1], path);
+                }
+            }
+        }
+    });
+
+    for (const [moduleId, functionPath] of functionPaths.entries()) {
+        const exportDeclarationPath = exportDeclarationPaths.get(moduleId);
+        const recordDeclarationPath = recordDeclarationPaths.get(moduleId);
+        const recordCallPath = recordCallPaths.get(moduleId);
+        if (!exportDeclarationPath || !recordDeclarationPath || !recordCallPath) {
+            continue;
+        }
+
+        const replacementNodes = buildFlattenedWebpackModuleNodes(functionPath.node, moduleId);
+        if (!replacementNodes) {
+            continue;
+        }
+
+        functionPath.replaceWithMultiple(replacementNodes);
+        if (!recordDeclarationPath.removed) {
+            recordDeclarationPath.remove();
+        }
+        if (!recordCallPath.removed) {
+            recordCallPath.remove();
+        }
+        if (!exportDeclarationPath.removed) {
+            exportDeclarationPath.remove();
+        }
+        flattenedCount++;
+    }
+
+    console.log(`Webpack module factories flattened: ${flattenedCount}.`);
+    return generator(ast, { jsescOption: { minimal: true } }).code;
+}
+
+function renameWebpackModuleRequireParams(ast, moduleFunctionNames) {
+    let renameCount = 0;
+
+    traverse(ast, {
+        FunctionDeclaration(path) {
+            if (!path.node.id || !moduleFunctionNames.has(path.node.id.name)) {
+                return;
+            }
+
+            const lastParam = path.node.params[path.node.params.length - 1];
+            if (!t.isIdentifier(lastParam) || lastParam.name === '__webpack_require__') {
+                return;
+            }
+
+            const hasOwnBinding = typeof path.scope.hasOwnBinding === 'function'
+                ? path.scope.hasOwnBinding('__webpack_require__')
+                : path.scope.hasBinding('__webpack_require__');
+            if (hasOwnBinding) {
+                return;
+            }
+
+            path.scope.rename(lastParam.name, '__webpack_require__');
+            renameCount++;
+        }
+    });
+
+    return renameCount;
+}
+
+function hasEnoughWebpackModuleFactories(node) {
+    if (!t.isObjectExpression(node)) {
+        return false;
+    }
+
+    let functionCount = 0;
+    for (const property of node.properties) {
+        const moduleId = getWebpackModuleIdFromProperty(property);
+        if (
+            t.isObjectProperty(property) &&
+            isLikelyWebpackModuleId(moduleId) &&
+            (t.isFunctionExpression(property.value) || t.isArrowFunctionExpression(property.value))
+        ) {
+            functionCount++;
+        }
+    }
+
+    return functionCount > 5;
+}
+
+function isLikelyWebpackModuleId(moduleId) {
+    return typeof moduleId === 'string' && /^(?:\d+|[0-9a-f]{4,})$/i.test(moduleId);
+}
+
+function getWebpackModuleIdFromProperty(propertyNode) {
+    if (!t.isObjectProperty(propertyNode)) {
+        return null;
+    }
+
+    if (t.isIdentifier(propertyNode.key) && !propertyNode.computed) {
+        return propertyNode.key.name;
+    }
+
+    if (t.isStringLiteral(propertyNode.key) || t.isNumericLiteral(propertyNode.key)) {
+        return String(propertyNode.key.value);
+    }
+
+    return null;
+}
+
+function sanitizeModuleIdForIdentifier(moduleId) {
+    return String(moduleId).replace(/[^a-zA-Z0-9_]/g, '_');
+}
+
+function getWebpackModuleFactoryName(moduleId) {
+    return `webpack_module_${sanitizeModuleIdForIdentifier(moduleId)}`;
+}
+
+function getWebpackModuleRecordName(moduleId) {
+    return `webpack_module_record_${sanitizeModuleIdForIdentifier(moduleId)}`;
+}
+
+function getWebpackModuleExportsName(moduleId) {
+    return `webpack_exports_${sanitizeModuleIdForIdentifier(moduleId)}`;
+}
+
+function makeModuleIdLiteral(moduleId) {
+    return /^[0-9]+$/.test(String(moduleId))
+        ? t.numericLiteral(Number(moduleId))
+        : t.stringLiteral(String(moduleId));
+}
+
+function getInsertionScopePath(path) {
+    return path.findParent(parent => parent.isBlockStatement() || parent.isProgram());
+}
+
+function getProgramScopePath(path) {
+    return path.findParent(parent => parent.isProgram()) || path;
+}
+
+function collectWebpackModuleContainers(ast) {
+    const containers = [];
+
+    traverse(ast, {
+        VariableDeclarator(path) {
+            if (!hasEnoughWebpackModuleFactories(path.node.init)) {
+                return;
+            }
+
+            const insertionScopePath = getInsertionScopePath(path);
+            if (!insertionScopePath) {
+                return;
+            }
+
+            containers.push({
+                objectPath: path.get('init'),
+                insertionScopePath,
+                programScopePath: getProgramScopePath(path)
+            });
+        },
+        CallExpression(path) {
+            if (!t.isMemberExpression(path.node.callee)) {
+                return;
+            }
+
+            const args = path.get('arguments');
+            if (args.length === 0 || !args[0].isArrayExpression()) {
+                return;
+            }
+
+            const elements = args[0].get('elements');
+            if (elements.length < 2 || !elements[1]?.isObjectExpression()) {
+                return;
+            }
+
+            if (!hasEnoughWebpackModuleFactories(elements[1].node)) {
+                return;
+            }
+
+            const insertionScopePath = getInsertionScopePath(path);
+            if (!insertionScopePath) {
+                return;
+            }
+
+            containers.push({
+                objectPath: elements[1],
+                insertionScopePath,
+                programScopePath: getProgramScopePath(path)
+            });
+        }
+    });
+
+    return containers;
+}
+
+function makeWebpackModuleRecordStatements(moduleId, factoryName) {
+    const recordName = getWebpackModuleRecordName(moduleId);
+    const exportsName = getWebpackModuleExportsName(moduleId);
+    const recordIdentifier = t.identifier(recordName);
+    const exportsMemberExpression = t.memberExpression(recordIdentifier, t.identifier('exports'));
+
+    return [
+        t.variableDeclaration('var', [
+            t.variableDeclarator(
+                recordIdentifier,
+                t.objectExpression([
+                    t.objectProperty(t.identifier('exports'), t.objectExpression([]))
+                ])
+            )
+        ]),
+        t.expressionStatement(
+            t.callExpression(
+                t.identifier(factoryName),
+                [
+                    recordIdentifier,
+                    exportsMemberExpression,
+                    t.identifier('__webpack_require__')
+                ]
+            )
+        ),
+        t.exportNamedDeclaration(
+            t.variableDeclaration('var', [
+                t.variableDeclarator(
+                    t.identifier(exportsName),
+                    exportsMemberExpression
+                )
+            ]),
+            []
+        )
+    ];
+}
+
+function collectWebpackModuleRegistry(sourceCode, sourceFilePath) {
+    const ast = parseSourceCode(sourceCode);
+    const containers = collectWebpackModuleContainers(ast);
+    const moduleRegistry = new Map();
+
+    for (const container of containers) {
+        for (const propertyPath of container.objectPath.get('properties')) {
+            if (!propertyPath.isObjectProperty()) {
+                continue;
+            }
+
+            const moduleId = getWebpackModuleIdFromProperty(propertyPath.node);
+            const valuePath = propertyPath.get('value');
+            if (
+                moduleId === null ||
+                !isLikelyWebpackModuleId(moduleId) ||
+                !(valuePath.isFunctionExpression() || valuePath.isArrowFunctionExpression())
+            ) {
+                continue;
+            }
+
+            if (!moduleRegistry.has(moduleId)) {
+                moduleRegistry.set(moduleId, {
+                    sourceFilePath,
+                    factoryName: getWebpackModuleFactoryName(moduleId),
+                    exportsName: getWebpackModuleExportsName(moduleId),
+                    recordName: getWebpackModuleRecordName(moduleId)
+                });
+            }
+        }
+    }
+
+    return moduleRegistry;
+}
+
+function getImportPathForSourceFile(sourceFilePath, importedSourceFilePath) {
+    let relativePath = path.relative(path.dirname(sourceFilePath), importedSourceFilePath).replace(/\\/g, '/');
+    if (!relativePath.startsWith('.')) {
+        relativePath = `./${relativePath}`;
+    }
+    return relativePath;
+}
+
+function insertWebpackExportImports(ast, sourceFilePath, importedModuleInfos) {
+    if (importedModuleInfos.size === 0) {
+        return;
+    }
+
+    const importGroups = new Map();
+    for (const moduleInfo of importedModuleInfos.values()) {
+        if (!moduleInfo.sourceFilePath || moduleInfo.sourceFilePath === sourceFilePath) {
+            continue;
+        }
+
+        const importPath = getImportPathForSourceFile(sourceFilePath, moduleInfo.sourceFilePath);
+        let exportNames = importGroups.get(importPath);
+        if (!exportNames) {
+            exportNames = new Set();
+            importGroups.set(importPath, exportNames);
+        }
+        exportNames.add(moduleInfo.exportsName);
+    }
+
+    if (importGroups.size === 0) {
+        return;
+    }
+
+    const importDeclarations = Array.from(importGroups.entries())
+        .sort((left, right) => left[0].localeCompare(right[0]))
+        .map(([importPath, exportNames]) => t.importDeclaration(
+            Array.from(exportNames)
+                .sort((left, right) => left.localeCompare(right))
+                .map(exportName => t.importSpecifier(t.identifier(exportName), t.identifier(exportName))),
+            t.stringLiteral(importPath)
+        ));
+
+    ast.program.body.unshift(...importDeclarations);
+}
+
+function replaceStaticWebpackRequireCalls(ast, moduleRegistry, sourceFilePath) {
+    let rewriteCount = 0;
+    const importedModuleInfos = new Map();
+
+    traverse(ast, {
+        CallExpression(path) {
+            if (t.isIdentifier(path.node.callee, { name: '__webpack_require__' })) {
+                if (path.node.arguments.length !== 1) {
                     return;
                 }
 
-                // 执行替换
-                for (const refPath of binding.referencePaths) {
-                    // 此时 init 必定是 Literal，直接根据类型创建对应的 Literal 节点
-                    // 使用 t.cloneNode 复制节点，防止引用同一个对象出错
-                    refPath.replaceWith(t.cloneNode(init));
+                const [moduleIdNode] = path.node.arguments;
+                if (!(t.isStringLiteral(moduleIdNode) || t.isNumericLiteral(moduleIdNode))) {
+                    return;
                 }
 
-                // 替换完成后，标记发生了改变
-                changed = true;
+                const moduleId = String(moduleIdNode.value);
+                const moduleInfo = moduleRegistry.get(moduleId);
+                if (!moduleInfo) {
+                    return;
+                }
 
-                // 注意：这里我们不直接 remove，而是等到下一轮循环时
-                // binding.referencePaths.length 变成 0 了再由上面的逻辑删除
-                // 这样逻辑更清晰
+                if (moduleInfo.sourceFilePath && moduleInfo.sourceFilePath !== sourceFilePath) {
+                    importedModuleInfos.set(moduleId, moduleInfo);
+                }
+                path.replaceWith(t.identifier(moduleInfo.exportsName));
+                rewriteCount++;
+                path.skip();
+                return;
             }
-        });
+
+            if (!t.isMemberExpression(path.node.callee)) {
+                return;
+            }
+
+            if (
+                !t.isIdentifier(path.node.callee.object, { name: '__webpack_require__' }) ||
+                getStaticMemberName(path.node.callee) !== 'bind'
+            ) {
+                return;
+            }
+
+            if (path.node.arguments.length !== 2 || !t.isNullLiteral(path.node.arguments[0])) {
+                return;
+            }
+
+            const moduleIdNode = path.node.arguments[1];
+            if (!(t.isStringLiteral(moduleIdNode) || t.isNumericLiteral(moduleIdNode))) {
+                return;
+            }
+
+            const moduleId = String(moduleIdNode.value);
+            const moduleInfo = moduleRegistry.get(moduleId);
+            if (!moduleInfo) {
+                return;
+            }
+
+            if (moduleInfo.sourceFilePath && moduleInfo.sourceFilePath !== sourceFilePath) {
+                importedModuleInfos.set(moduleId, moduleInfo);
+            }
+            path.replaceWith(
+                t.functionExpression(
+                    null,
+                    [],
+                    t.blockStatement([
+                        t.returnStatement(t.identifier(moduleInfo.exportsName))
+                    ])
+                )
+            );
+            rewriteCount++;
+            path.skip();
+        }
+    });
+
+    insertWebpackExportImports(ast, sourceFilePath, importedModuleInfos);
+    return rewriteCount;
+}
+
+var unpackWebpackModules = (sourceCode, moduleRegistry, sourceFilePath) => {
+    const ast = parseSourceCode(sourceCode);
+    const containers = collectWebpackModuleContainers(ast);
+    let moduleMap = new Map();
+    let moduleFunctionNames = new Set();
+    const scopeInsertions = new Map();
+    const moduleRecordInsertions = new Map();
+    let extractedModuleCount = 0;
+
+    if (containers.length === 0) {
+        console.log("No webpack module containers found.");
+        return sourceCode;
     }
 
-    return generator(ast, { jesc: true }).code;
+    for (const container of containers) {
+        const { objectPath, programScopePath } = container;
+        let declarationsForScope = scopeInsertions.get(programScopePath);
+        if (!declarationsForScope) {
+            declarationsForScope = [];
+            scopeInsertions.set(programScopePath, declarationsForScope);
+        }
+
+        let moduleRecordsForScope = moduleRecordInsertions.get(programScopePath);
+        if (!moduleRecordsForScope) {
+            moduleRecordsForScope = [];
+            moduleRecordInsertions.set(programScopePath, moduleRecordsForScope);
+        }
+
+        for (const propertyPath of objectPath.get('properties')) {
+            if (!propertyPath.isObjectProperty()) {
+                continue;
+            }
+
+            const moduleId = getWebpackModuleIdFromProperty(propertyPath.node);
+            const valuePath = propertyPath.get('value');
+            if (
+                moduleId === null ||
+                !isLikelyWebpackModuleId(moduleId) ||
+                !(valuePath.isFunctionExpression() || valuePath.isArrowFunctionExpression())
+            ) {
+                continue;
+            }
+
+            const moduleInfo = moduleRegistry.get(moduleId) || {
+                sourceFilePath,
+                factoryName: getWebpackModuleFactoryName(moduleId),
+                exportsName: getWebpackModuleExportsName(moduleId),
+                recordName: getWebpackModuleRecordName(moduleId)
+            };
+            let factoryName = moduleMap.get(moduleId);
+            if (!factoryName) {
+                factoryName = moduleInfo.factoryName;
+                moduleMap.set(moduleId, factoryName);
+                moduleFunctionNames.add(factoryName);
+
+                if (!moduleInfo.sourceFilePath || moduleInfo.sourceFilePath === sourceFilePath) {
+                    const funcExpr = valuePath.node;
+                    declarationsForScope.push(
+                        t.functionDeclaration(
+                            t.identifier(factoryName),
+                            funcExpr.params,
+                            t.isBlockStatement(funcExpr.body)
+                                ? funcExpr.body
+                                : t.blockStatement([t.returnStatement(funcExpr.body)]),
+                            funcExpr.generator,
+                            funcExpr.async
+                        )
+                    );
+                    moduleRecordsForScope.push(...makeWebpackModuleRecordStatements(moduleId, factoryName));
+                    extractedModuleCount++;
+                }
+            }
+
+            valuePath.replaceWith(t.identifier(factoryName));
+        }
+    }
+
+    for (const [scopePath, declarations] of scopeInsertions.entries()) {
+        const moduleRecordStatements = moduleRecordInsertions.get(scopePath) || [];
+        scopePath.node.body.unshift(...declarations, ...moduleRecordStatements);
+    }
+
+    const requireRenameCount = renameWebpackModuleRequireParams(ast, moduleFunctionNames);
+    const staticRequireRewriteCount = replaceStaticWebpackRequireCalls(ast, moduleRegistry, sourceFilePath);
+    console.log(`Extracted ${extractedModuleCount} webpack module factories from ${containers.length} container(s).`);
+    console.log(`Webpack module require params renamed: ${requireRenameCount}.`);
+    console.log(`Static webpack require calls rewritten: ${staticRequireRewriteCount}.`);
+    return generator(ast, { jsescOption: { minimal: true } }).code;
+}
+
+function hasObfuscationMarkers(sourceCode) {
+    return /\b(?:_0x[0-9a-f]+|a\d+_0x[0-9a-f]+)\b/i.test(sourceCode);
+}
+
+function collectInputFiles(inputPath) {
+    const absoluteInputPath = path.resolve(__dirname, inputPath);
+    if (!fs.existsSync(absoluteInputPath)) {
+        throw new Error(`Input path not found: ${inputPath}`);
+    }
+
+    const stat = fs.statSync(absoluteInputPath);
+    if (stat.isFile()) {
+        return [absoluteInputPath];
+    }
+
+    return fs.readdirSync(absoluteInputPath)
+        .map(name => path.join(absoluteInputPath, name))
+        .filter(filePath => fs.statSync(filePath).isFile())
+        .sort((left, right) => left.localeCompare(right));
+}
+
+function getOutputPath(sourceFilePath) {
+    const sourceRoot = path.resolve(__dirname, 'source/v2');
+    const outputRoot = path.resolve(__dirname, 'dist/v2');
+    const relativePath = path.relative(sourceRoot, sourceFilePath);
+
+    if (!relativePath.startsWith('..') && !path.isAbsolute(relativePath)) {
+        return path.join(outputRoot, relativePath);
+    }
+
+    return path.resolve(__dirname, 'dist', path.basename(sourceFilePath));
+}
+
+function ensureOutputDir(filePath) {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+}
+
+function isUnderDirectory(filePath, directoryPath) {
+    const relativePath = path.relative(directoryPath, filePath);
+    return !relativePath.startsWith('..') && !path.isAbsolute(relativePath);
+}
+
+function collectRegistryFiles(inputFiles) {
+    const sourceRoot = path.resolve(__dirname, 'source/v2');
+    if (!fs.existsSync(sourceRoot)) {
+        return inputFiles;
+    }
+
+    const allWithinSourceRoot = inputFiles.every(filePath => isUnderDirectory(filePath, sourceRoot));
+    return allWithinSourceRoot ? collectInputFiles(sourceRoot) : inputFiles;
+}
+
+function prepareSourceFile(sourceFilePath) {
+    const displayPath = path.relative(__dirname, sourceFilePath);
+    let currentCode = fs.readFileSync(sourceFilePath, 'utf-8').toString();
+    const shouldRunObfuscationPasses = hasObfuscationMarkers(currentCode);
+
+    console.log(`Preparing ${displayPath}...`);
+
+    if (shouldRunObfuscationPasses) {
+        console.log("Starting unpackObfDicts...");
+        currentCode = unpackObfDicts(currentCode).code;
+
+        console.log("Starting removeObfIfStatement...");
+        currentCode = removeObfIfStatement(currentCode);
+
+        console.log("Starting simplifyObfStructures...");
+        currentCode = simplifyObfStructures(currentCode);
+    } else {
+        console.log("No obfuscation markers detected. Skipping shared deobfuscation passes.");
+    }
+
+    return {
+        code: currentCode,
+        shouldRunObfuscationPasses
+    };
+}
+
+function buildWebpackModuleRegistry(preparedFiles) {
+    const moduleRegistry = new Map();
+
+    for (const [sourceFilePath, preparedFile] of preparedFiles.entries()) {
+        const fileRegistry = collectWebpackModuleRegistry(preparedFile.code, sourceFilePath);
+        for (const [moduleId, moduleInfo] of fileRegistry.entries()) {
+            if (!moduleRegistry.has(moduleId)) {
+                moduleRegistry.set(moduleId, moduleInfo);
+            }
+        }
+    }
+
+    return moduleRegistry;
+}
+
+function processPreparedSourceFile(sourceFilePath, preparedFile, moduleRegistry) {
+    const displayPath = path.relative(__dirname, sourceFilePath);
+    const outputPath = getOutputPath(sourceFilePath);
+    let currentCode = preparedFile.code;
+
+    console.log(`Processing ${displayPath}...`);
+
+    console.log("Starting unpackWebpackModules...");
+    currentCode = unpackWebpackModules(currentCode, moduleRegistry, sourceFilePath);
+
+    console.log("Starting normalizeRuntimeHelperDicts...");
+    currentCode = normalizeRuntimeHelperDicts(currentCode);
+
+    console.log("Starting renameWebpackRuntimeScaffold...");
+    currentCode = renameWebpackRuntimeScaffold(currentCode);
+
+    console.log("Starting inlineRuntimeHelperRefs...");
+    currentCode = inlineRuntimeHelperRefs(currentCode);
+
+    console.log("Starting flattenWebpackModuleFactories...");
+    currentCode = flattenWebpackModuleFactories(currentCode);
+
+    if (preparedFile.shouldRunObfuscationPasses) {
+        console.log("Starting cleanupObfuscatedReadableArtifacts...");
+        currentCode = cleanupObfuscatedReadableArtifacts(currentCode);
+    }
+
+    ensureOutputDir(outputPath);
+    fs.writeFileSync(outputPath, currentCode);
+    console.log(`Wrote ${path.relative(__dirname, outputPath)}.`);
 }
 
 function main() {
-    let sourcePath = 'source/new2_stuStudy.js';
-    let originalCode = fs.readFileSync(path.resolve(__dirname, sourcePath), 'utf-8').toString();
+    const inputPath = process.argv[2] || 'source/v2';
+    const inputFiles = collectInputFiles(inputPath);
+    const registryFiles = collectRegistryFiles(inputFiles);
+    const preparedFiles = new Map();
+    let failureCount = 0;
 
-    let unpackedCode = replaceVar(originalCode, "_0x1e77");
-    fs.writeFileSync(path.resolve(__dirname, 'dist/source-decrypted.js'), unpackedCode);
+    for (const sourceFilePath of registryFiles) {
+        try {
+            preparedFiles.set(sourceFilePath, prepareSourceFile(sourceFilePath));
+        } catch (error) {
+            failureCount++;
+            console.error(`Failed to prepare ${path.relative(__dirname, sourceFilePath)}:`);
+            console.error(error && error.stack ? error.stack : error);
+        }
+    }
 
-    let unpackedResult = unpackObfDicts(unpackedCode);
-    let unpakcedCode = removeObfDicts(unpackedResult.code, unpackedResult.dictNames);
-    fs.writeFileSync(path.resolve(__dirname, 'dist/source-decrypted-unpacked.js'), unpakcedCode);
+    const moduleRegistry = buildWebpackModuleRegistry(preparedFiles);
+    console.log(`Collected ${moduleRegistry.size} webpack module record(s).`);
 
-    let cleanedCode = removeObfIfStatement(unpakcedCode);
-    fs.writeFileSync(path.resolve(__dirname, 'dist/source-cleaned.js'), cleanedCode);
+    for (const sourceFilePath of inputFiles) {
+        if (!preparedFiles.has(sourceFilePath)) {
+            continue;
+        }
 
-    let noObfFuncCode = removeObfFunc(cleanedCode);
-    fs.writeFileSync(path.resolve(__dirname, 'dist/source-no-obf-func.js'), noObfFuncCode);
+        try {
+            processPreparedSourceFile(sourceFilePath, preparedFiles.get(sourceFilePath), moduleRegistry);
+        } catch (error) {
+            failureCount++;
+            console.error(`Failed to process ${path.relative(__dirname, sourceFilePath)}:`);
+            console.error(error && error.stack ? error.stack : error);
+        }
+    }
 
-    let noObfConstantsCode = removeObfConstants(noObfFuncCode);
-    fs.writeFileSync(path.resolve(__dirname, 'dist/source-no-obf-constants.js'), noObfConstantsCode);
+    if (failureCount > 0) {
+        process.exitCode = 1;
+        console.error(`Completed with ${failureCount} failure(s).`);
+        return;
+    }
+
+    console.log(`Processed ${inputFiles.length} file(s).`);
 }
+
 main();
