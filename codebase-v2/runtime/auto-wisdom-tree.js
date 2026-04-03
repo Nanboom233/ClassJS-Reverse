@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         2026 智慧树自动浇水施肥开花结果 - Enhanced
 // @namespace    auto-wisdom-tree
-// @version      0.1.6
+// @version      0.1.10
 // @description  智慧树是一棵树
 // @match        *://studyvideoh5.zhihuishu.com/*
 // @match        *://onlineexamh5new.zhihuishu.com/*
@@ -86,6 +86,20 @@
       lastTickLoggedAt: 0,
       lastSnapshot: null,
     },
+    serverProgress: {
+      initialized: false,
+      byLessonId: Object.create(null),
+      pendingPayload: null,
+      refreshTimerId: 0,
+      pendingVideoId: null,
+      pendingLessonId: null,
+      pendingTargetStudyTime: 0,
+      pendingAttempts: 0,
+      pendingAt: 0,
+      pendingReason: "",
+      lastConfirmedVideoId: null,
+      lastConfirmedAt: 0,
+    },
     answerFlow: {
       lastPopupAnswerAt: 0,
     },
@@ -133,6 +147,10 @@
     /\/cheat\/agreeExceptionActionDetail/i,
     /studentexam-api\.zhihuishu\.com\/studentExam.*\/app\/queryIsLimitFlow/i,
   ];
+
+  const STUDY_PROGRESS_QUERY_RE = /\/learning\/queryStuyInfo/i;
+  const STUDY_SAVE_CACHE_RE = /\/learning\/saveCacheIntervalTimeV2/i;
+  const STUDY_SAVE_DB_RE = /\/learning\/saveDatabaseIntervalTimeV2/i;
 
   const WRAP_MARK = "__awt_wrapped__";
 
@@ -455,6 +473,50 @@
       return "detect";
     }
     return null;
+  }
+
+  function parseJsonSafe(text) {
+    if (typeof text !== "string" || !text) return null;
+    try {
+      return JSON.parse(text);
+    } catch (_error) {
+      return null;
+    }
+  }
+
+  function observeStudyApiResponse(url, bodyText) {
+    const normalizedUrl = normalizeUrl(url);
+    if (!normalizedUrl) return;
+
+    const payload = parseJsonSafe(bodyText);
+    if (!payload || typeof payload !== "object") return;
+
+    if (STUDY_PROGRESS_QUERY_RE.test(normalizedUrl)) {
+      const vm = findStudyVm();
+      if (!vm) {
+        state.serverProgress.pendingPayload = payload;
+        return;
+      }
+      applyServerProgressSnapshot(vm, payload, "queryStuyInfo");
+      return;
+    }
+
+    if (payload.code !== 0) return;
+    if (!STUDY_SAVE_CACHE_RE.test(normalizedUrl) && !STUDY_SAVE_DB_RE.test(normalizedUrl)) {
+      return;
+    }
+
+    const vm = findStudyVm();
+    if (!vm) return;
+
+    scheduleServerProgressRefresh(
+      vm,
+      STUDY_SAVE_DB_RE.test(normalizedUrl) ? "saveDatabaseIntervalTimeV2" : "saveCacheIntervalTimeV2",
+      {
+        delayMs: STUDY_SAVE_DB_RE.test(normalizedUrl) ? 900 : 600,
+        targetStudyTime: Number(vm.totalStudyTime || 0),
+      },
+    );
   }
 
   function buildMockBody(url, kind) {
@@ -829,7 +891,17 @@
       const url = normalizeUrl(args[0] && args[0].url ? args[0].url : args[0]);
       const kind = shouldBlockUrl(url);
       if (!kind) {
-        return originalFetch(...args);
+        return originalFetch(...args).then((response) => {
+          try {
+            const clone = response && typeof response.clone === "function" ? response.clone() : null;
+            if (clone && typeof clone.text === "function") {
+              void clone.text().then((text) => {
+                observeStudyApiResponse(response.url || url, text);
+              }).catch(() => { });
+            }
+          } catch (_error) { }
+          return response;
+        });
       }
       const body = buildMockBody(url, kind);
       logWarn("network", `fetch fallback blocked [${kind}]`, url);
@@ -883,6 +955,29 @@
       const url = this.__awt_url || "";
       const kind = shouldBlockUrl(url);
       if (!kind) {
+        if (!this.__awt_progress_observer__) {
+          this.__awt_progress_observer__ = true;
+          const inspectResponse = () => {
+            const responseText = typeof this.responseText === "string"
+              ? this.responseText
+              : typeof this.response === "string"
+                ? this.response
+                : "";
+            observeStudyApiResponse(this.__awt_url || "", responseText);
+          };
+          if (typeof this.addEventListener === "function") {
+            this.addEventListener("loadend", inspectResponse, { once: true });
+          } else {
+            const originalOnLoadEnd = this.onloadend;
+            this.onloadend = function (...args) {
+              inspectResponse();
+              if (typeof originalOnLoadEnd === "function") {
+                return originalOnLoadEnd.apply(this, args);
+              }
+              return undefined;
+            };
+          }
+        }
         return originalSend.call(this, body);
       }
 
@@ -1338,14 +1433,17 @@
       }
       if (currentLesson && actualPercent >= 50 && Number(currentLesson.isStudiedLesson || 0) !== 1) {
         currentLesson.isStudiedLesson = 1;
-        vm.playTimes = Math.max(Number(vm.playTimes || 0), 6);
-        if (typeof vm.computeProgree === "function") {
-          safeCall(() => vm.computeProgree());
+        changed = true;
+      }
+      if (actualPercent >= 50) {
+        const previousPlayTimes = Number(vm.playTimes || 0);
+        vm.playTimes = Math.max(previousPlayTimes, 6);
+        if (vm.playTimes !== previousPlayTimes) {
+          changed = true;
         }
         if (typeof vm.saveDdsjkTimeInWhileFn === "function" && !vm.isSaving) {
           safeCall(() => vm.saveDdsjkTimeInWhileFn(null, null, null, 8));
         }
-        changed = true;
         logWarn("progress", "forced final progress flush at natural end", {
           videoId: currentVideoId,
           actualPercent: Number(actualPercent.toFixed(2)),
@@ -2271,7 +2369,7 @@
   function maybeLaunchCurrentLessonExam(vm) {
     if (!isStudyPage() || !state.config.autoQuiz || !state.config.autoOpenRegularExam) return false;
     if (vm.testDialog || vm.imgDialog) return false;
-    if (!isRecordedProgressComplete(vm)) return false;
+    if (!isServerProgressConfirmedComplete(vm)) return false;
 
     const currentLesson = findCurrentLesson(vm);
     const studentExamDto = currentLesson?.studentExamDto;
@@ -2331,6 +2429,9 @@
       state.currentVideoChangedAt = timestamp;
       state.lastReplayVideoId = null;
       state.lastReplayAt = 0;
+      if (state.serverProgress.pendingVideoId && state.serverProgress.pendingVideoId !== currentVideoId) {
+        clearPendingServerProgressRefresh();
+      }
       state.progressSync.videoId = currentVideoId;
       state.progressSync.currentTime = 0;
       state.progressSync.totalStudyTime = Number(vm?.totalStudyTime || 0);
@@ -2411,6 +2512,278 @@
     return entries;
   }
 
+  function getLessonProgressId(lesson) {
+    if (!lesson || typeof lesson.id === "undefined" || lesson.id === null) return "";
+    return String(lesson.id);
+  }
+
+  function setServerProgressEntry(lesson, watchState, studyTotalTime, timestamp = now()) {
+    const lessonId = getLessonProgressId(lesson);
+    if (!lessonId) return null;
+
+    const normalizedWatchState = Number(watchState || 0);
+    const normalizedStudyTotalTime = Math.max(0, Number(studyTotalTime || 0));
+    const duration = Number(lesson?.videoSec || 0);
+    const percentage = normalizedWatchState === 1
+      ? 100
+      : duration > 0
+        ? clampPercent(Math.floor((normalizedStudyTotalTime / duration) * 100))
+        : 0;
+
+    const record = {
+      lessonId,
+      videoId: normalizeVideoId(lesson?.videoId),
+      watchState: normalizedWatchState,
+      studyTotalTime: normalizedStudyTotalTime,
+      percentage,
+      updatedAt: timestamp,
+    };
+    state.serverProgress.byLessonId[lessonId] = record;
+    state.serverProgress.initialized = true;
+    return record;
+  }
+
+  function getServerProgressEntry(lesson) {
+    const lessonId = getLessonProgressId(lesson);
+    if (!lessonId) return null;
+    return state.serverProgress.byLessonId[lessonId] || null;
+  }
+
+  function getServerRecordPercent(lesson) {
+    const confirmed = getServerProgressEntry(lesson);
+    if (confirmed) return clampPercent(confirmed.percentage);
+
+    const duration = Number(lesson?.videoSec || 0);
+    const serverStudyTotalTime = Number(lesson?.studyTotalTime || 0);
+    if (duration > 0 && serverStudyTotalTime > 0) {
+      return clampPercent(Math.floor((serverStudyTotalTime / duration) * 100));
+    }
+
+    if (!state.serverProgress.initialized && Number(lesson?.isStudiedLesson || 0) === 1) {
+      return 100;
+    }
+
+    return 0;
+  }
+
+  function applyQueryStudyInfoToLesson(lesson, watchState, studyTotalTime) {
+    if (!lesson || typeof lesson !== "object") return false;
+
+    let changed = false;
+    const normalizedWatchState = Number(watchState || 0);
+    const normalizedStudyTotalTime = Math.max(0, Number(studyTotalTime || 0));
+
+    if (Number(lesson.isStudiedLesson || 0) !== normalizedWatchState) {
+      lesson.isStudiedLesson = normalizedWatchState;
+      changed = true;
+    }
+
+    if (Number(lesson.studyTotalTime || 0) !== normalizedStudyTotalTime) {
+      lesson.studyTotalTime = normalizedStudyTotalTime;
+      changed = true;
+    }
+
+    if (normalizedWatchState === 2) {
+      const duration = Number(lesson.videoSec || 0);
+      const percentage = duration > 0
+        ? Math.min(100, Math.floor((normalizedStudyTotalTime / duration) * 100))
+        : 0;
+      const normalizedPercentage = percentage === 0 ? 0 : clampPercent(percentage);
+      if (Number(lesson.percentage || 0) !== normalizedPercentage) {
+        lesson.percentage = normalizedPercentage;
+        changed = true;
+      }
+    } else if (normalizedWatchState === 0 && Number(lesson.percentage || 0) !== 0) {
+      lesson.percentage = 0;
+      changed = true;
+    }
+
+    return changed;
+  }
+
+  function getDisplayedRecordPercent(lesson) {
+    if (!lesson) return 0;
+    if (Number(lesson.isStudiedLesson || 0) === 1) {
+      return 100;
+    }
+    return clampPercent(lesson.percentage || 0);
+  }
+
+  function isServerProgressConfirmedComplete(vm) {
+    const currentLesson = findCurrentLesson(vm);
+    if (!currentLesson) return hasFinishIcon();
+
+    const confirmed = getServerProgressEntry(currentLesson);
+    if (confirmed) {
+      return Number(confirmed.watchState || 0) === 1;
+    }
+
+    return false;
+  }
+
+  function ensureCurrentLessonServerProgress(vm, reason = "saveSuccess", options) {
+    const currentVideoId = resolveCurrentVideoId(vm);
+    if (!vm || !currentVideoId) return false;
+    if (isPendingServerProgressRefresh(currentVideoId)) return true;
+
+    const currentLesson = findCurrentLesson(vm);
+    if (!currentLesson) return false;
+
+    const confirmed = getServerProgressEntry(currentLesson);
+    const targetStudyTime = Math.max(
+      0,
+      Number(options?.targetStudyTime ?? vm.totalStudyTime ?? currentLesson.studyTotalTime ?? 0) || 0,
+    );
+    if (
+      confirmed
+      && Number(confirmed.watchState || 0) === 1
+      && Number(confirmed.studyTotalTime || 0) >= targetStudyTime - 1
+    ) {
+      return false;
+    }
+
+    return scheduleServerProgressRefresh(vm, reason, {
+      ...options,
+      delayMs: Number(options?.delayMs ?? 0),
+      targetStudyTime,
+    });
+  }
+
+  function clearPendingServerProgressRefresh() {
+    if (state.serverProgress.refreshTimerId) {
+      clearTimeout(state.serverProgress.refreshTimerId);
+    }
+    state.serverProgress.refreshTimerId = 0;
+    state.serverProgress.pendingVideoId = null;
+    state.serverProgress.pendingLessonId = null;
+    state.serverProgress.pendingTargetStudyTime = 0;
+    state.serverProgress.pendingAttempts = 0;
+    state.serverProgress.pendingAt = 0;
+    state.serverProgress.pendingReason = "";
+  }
+
+  function isPendingServerProgressRefresh(currentVideoId = state.serverProgress.pendingVideoId, timestamp = now()) {
+    const videoId = normalizeVideoId(currentVideoId);
+    if (!videoId) return false;
+    if (state.serverProgress.pendingVideoId !== videoId) return false;
+    if (!state.serverProgress.pendingAt) return false;
+    return timestamp - state.serverProgress.pendingAt < 15000;
+  }
+
+  function requestServerProgressRefresh(vm, reason = state.serverProgress.pendingReason || "saveSuccess") {
+    if (!vm || typeof vm.queryStuyInfo !== "function") return false;
+
+    const currentVideoId = resolveCurrentVideoId(vm);
+    if (!currentVideoId || state.serverProgress.pendingVideoId !== currentVideoId) return false;
+    if (state.serverProgress.pendingAttempts >= 3) return false;
+
+    state.serverProgress.pendingAttempts += 1;
+    logWarn("progress", "requesting server progress refresh", {
+      reason,
+      videoId: currentVideoId,
+      attempt: state.serverProgress.pendingAttempts,
+      targetStudyTime: Number(state.serverProgress.pendingTargetStudyTime || 0),
+    });
+    safeCall(() => vm.queryStuyInfo());
+    return true;
+  }
+
+  function scheduleServerProgressRefresh(vm, reason = "saveSuccess", options) {
+    if (!vm || typeof vm.queryStuyInfo !== "function") return false;
+    const config = options || {};
+
+    const currentVideoId = resolveCurrentVideoId(vm);
+    const currentLesson = findCurrentLesson(vm);
+    const lessonId = getLessonProgressId(currentLesson);
+    if (!currentVideoId || !lessonId) return false;
+
+    const timestamp = Number(config.timestamp || now());
+    const currentPendingTarget = Number(state.serverProgress.pendingTargetStudyTime || 0);
+    const targetStudyTime = Math.max(currentPendingTarget, Number(config.targetStudyTime ?? vm.totalStudyTime ?? 0) || 0);
+    const currentPendingVideoId = normalizeVideoId(state.serverProgress.pendingVideoId);
+    const resetAttempts = config.resetAttempts !== false && (
+      currentPendingVideoId !== currentVideoId
+      || targetStudyTime > currentPendingTarget + 1
+    );
+
+    state.serverProgress.pendingVideoId = currentVideoId;
+    state.serverProgress.pendingLessonId = lessonId;
+    state.serverProgress.pendingTargetStudyTime = targetStudyTime;
+    state.serverProgress.pendingAt = timestamp;
+    state.serverProgress.pendingReason = reason;
+    if (resetAttempts) {
+      state.serverProgress.pendingAttempts = 0;
+    }
+
+    if (state.serverProgress.refreshTimerId) {
+      clearTimeout(state.serverProgress.refreshTimerId);
+    }
+
+    const delayMs = Math.max(0, Number(config.delayMs ?? 600));
+    state.serverProgress.refreshTimerId = setTimeout(() => {
+      state.serverProgress.refreshTimerId = 0;
+      requestServerProgressRefresh(vm, reason);
+    }, delayMs);
+    return true;
+  }
+
+  function applyServerProgressSnapshot(vm, payload, reason = "queryStuyInfo", timestamp = now()) {
+    const data = payload?.data;
+    if (!vm || !data || typeof data !== "object") return false;
+
+    const lessonPayload = data.lesson && typeof data.lesson === "object" ? data.lesson : {};
+    const smallLessonPayload = data.lv && typeof data.lv === "object" ? data.lv : {};
+    const entries = collectVideoEntries(vm);
+    let updatedCount = 0;
+
+    entries.forEach((entry) => {
+      const lessonId = getLessonProgressId(entry.progressTarget);
+      if (!lessonId) return;
+
+      const source = entry.smallLesson ? smallLessonPayload[lessonId] : lessonPayload[lessonId];
+      if (!source || typeof source !== "object") return;
+
+      setServerProgressEntry(entry.progressTarget, source.watchState, source.studyTotalTime, timestamp);
+      applyQueryStudyInfoToLesson(entry.progressTarget, source.watchState, source.studyTotalTime);
+      updatedCount += 1;
+    });
+
+    if (!updatedCount) return false;
+
+    const currentLessonId = state.serverProgress.pendingLessonId;
+    if (currentLessonId) {
+      const confirmed = state.serverProgress.byLessonId[currentLessonId] || null;
+      const confirmedStudyTime = Number(confirmed?.studyTotalTime || 0);
+      const targetStudyTime = Number(state.serverProgress.pendingTargetStudyTime || 0);
+      if (confirmed && (confirmed.watchState === 1 || confirmedStudyTime >= targetStudyTime - 1)) {
+        state.serverProgress.lastConfirmedVideoId = normalizeVideoId(state.serverProgress.pendingVideoId);
+        state.serverProgress.lastConfirmedAt = timestamp;
+        clearPendingServerProgressRefresh();
+        logSuccess("progress", "server progress confirmed after refresh", {
+          reason,
+          videoId: state.serverProgress.lastConfirmedVideoId,
+          confirmedStudyTime,
+          watchState: confirmed.watchState,
+        });
+      } else if (state.serverProgress.pendingVideoId === resolveCurrentVideoId(vm)) {
+        clearPendingServerProgressRefresh();
+        logWarn("progress", "server progress incomplete after refresh", {
+          reason,
+          videoId: normalizeVideoId(confirmed?.videoId) || resolveCurrentVideoId(vm),
+          targetStudyTime,
+          confirmedStudyTime,
+          watchState: confirmed?.watchState ?? null,
+        });
+      }
+    }
+
+    logSuccess("progress", "server progress snapshot applied", {
+      reason,
+      updatedCount,
+    });
+    return true;
+  }
+
   function findFirstPendingVideoEntry(vm, excludeVideoId = null) {
     const entries = collectVideoEntries(vm);
     if (!entries.length) return null;
@@ -2428,9 +2801,7 @@
 
   function isLessonPendingForAdvance(lesson) {
     if (!lesson) return false;
-    const studied = Number(lesson.isStudiedLesson || 0);
-    const percentage = Number(lesson.percentage || 0);
-    return studied === 0 || (studied === 2 && percentage <= 50);
+    return Number(lesson.isStudiedLesson || 0) !== 1;
   }
 
   function findNextPendingVideoEntry(vm, currentVideoId = resolveCurrentVideoId(vm)) {
@@ -2465,7 +2836,7 @@
     if (!currentLesson) {
       return hasFinishIcon();
     }
-    return currentLesson.isStudiedLesson === 1 || hasFinishIcon();
+    return Number(currentLesson.isStudiedLesson || 0) === 1 || hasFinishIcon();
   }
 
   function isVideoNaturallyFinished(video) {
@@ -2506,7 +2877,20 @@
     const video = getPlayableVideo();
     if (!currentVideoId || shouldDelayReplay(currentVideoId)) return false;
     if (!isVideoNaturallyFinished(video)) return false;
-    if (isRecordedProgressComplete(vm)) return false;
+    if (isRecordedProgressComplete(vm) && !isServerProgressConfirmedComplete(vm)) {
+      if (ensureCurrentLessonServerProgress(vm, "endedServerConfirm", {
+        delayMs: 0,
+        targetStudyTime: Number(vm?.totalStudyTime || 0),
+      })) {
+        updateUi("等待服务端进度确认", vm);
+        return true;
+      }
+    }
+    if (isPendingServerProgressRefresh(currentVideoId)) {
+      updateUi("等待服务端进度确认", vm);
+      return true;
+    }
+    if (isServerProgressConfirmedComplete(vm)) return false;
     if (state.lastReplayVideoId === currentVideoId && now() - state.lastReplayAt < 3000) return true;
 
     state.lastReplayVideoId = currentVideoId;
@@ -2535,7 +2919,7 @@
 
   function shouldAdvance(vm) {
     const video = getPlayableVideo();
-    return isVideoNaturallyFinished(video) && isRecordedProgressComplete(vm);
+    return isVideoNaturallyFinished(video) && isServerProgressConfirmedComplete(vm);
   }
 
   function hasRecentAdvanceAttempt(currentVideoId, targetVideoId) {
@@ -2573,7 +2957,16 @@
     const currentVideoId = observeCurrentVideo(vm);
     if (vm.testDialog || vm.imgDialog) return;
     if (retryCurrentVideoIfNeeded(vm, currentVideoId)) return;
-    if (isRecordedProgressComplete(vm) && jumpToNextPendingVideo(vm, "recorded progress completed", currentVideoId)) return;
+    if (isRecordedProgressComplete(vm) && !isServerProgressConfirmedComplete(vm)) {
+      if (ensureCurrentLessonServerProgress(vm, "advanceServerConfirm", {
+        delayMs: 0,
+        targetStudyTime: Number(vm?.totalStudyTime || 0),
+      })) {
+        updateUi("等待服务端进度确认", vm);
+        return;
+      }
+    }
+    if (isServerProgressConfirmedComplete(vm) && jumpToNextPendingVideo(vm, "recorded progress completed", currentVideoId)) return;
     if (!shouldAdvance(vm)) return;
 
     if (state.lastVideoId === currentVideoId && !state.lastAdvanceTargetId && now() - state.lastAdvanceAt < 3000) {
@@ -2664,6 +3057,24 @@
     }
     if (scope === "player" && /advance to next video/i.test(message)) {
       return "当前视频已完成，已切换到下一节";
+    }
+    if (scope === "progress" && /server progress confirmed after refresh/i.test(message)) {
+      return "服务端进度已确认";
+    }
+    if (scope === "progress" && /server progress still lagging after refresh/i.test(message)) {
+      return "服务端进度仍未追上，继续等待";
+    }
+    if (scope === "progress" && /server progress incomplete after refresh/i.test(message)) {
+      return "服务端未确认完成，将回到开头重播";
+    }
+    if (scope === "progress" && /forced final progress flush at natural end/i.test(message)) {
+      return "视频已播完，已按页面进度补齐最终落库";
+    }
+    if (scope === "progress" && /requesting server progress refresh/i.test(message)) {
+      return null;
+    }
+    if (scope === "progress" && /server progress snapshot applied/i.test(message)) {
+      return null;
     }
     if (scope === "detect" && /notTrustScript blocked/i.test(message)) {
       return null;
@@ -2756,9 +3167,7 @@
     const playbackPercent = duration > 0
       ? clampPercent((currentTime / duration) * 100)
       : clampPercent(currentLesson?.percentage || 0);
-    const recordPercent = currentLesson?.isStudiedLesson === 1
-      ? 100
-      : clampPercent(currentLesson?.percentage || 0);
+    const recordPercent = getDisplayedRecordPercent(currentLesson);
 
     return {
       currentTime,
@@ -2776,7 +3185,7 @@
     let totalPercent = 0;
     for (const entry of entries) {
       const studied = Number(entry.progressTarget?.isStudiedLesson || 0);
-      const percentage = clampPercent(entry.progressTarget?.percentage || 0);
+      const percentage = getDisplayedRecordPercent(entry.progressTarget);
       if (studied === 1) {
         completedCount += 1;
         totalPercent += 100;
@@ -3217,6 +3626,11 @@
     }
 
     patchStudyVm(vm);
+    if (state.serverProgress.pendingPayload) {
+      if (applyServerProgressSnapshot(vm, state.serverProgress.pendingPayload, "deferredQueryStuyInfo")) {
+        state.serverProgress.pendingPayload = null;
+      }
+    }
     closeTransientDialogs(vm);
     ensureVideoState(vm);
     syncProgressFromPlayback(vm, "runtimeTick");
@@ -3230,6 +3644,8 @@
       updateUi("已自动作答并提交");
     } else if (state.config.autoQuiz && vm.testDialog) {
       updateUi("等待题组数据");
+    } else if (isPendingServerProgressRefresh(resolveCurrentVideoId(vm))) {
+      updateUi("等待服务端进度确认");
     } else {
       updateUi("运行中");
     }
