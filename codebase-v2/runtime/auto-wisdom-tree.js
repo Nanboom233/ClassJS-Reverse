@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         2026 智慧树自动浇水施肥开花结果 - Enhanced
 // @namespace    auto-wisdom-tree
-// @version      0.1.10
+// @version      0.1.11
 // @description  智慧树是一棵树
 // @match        *://studyvideoh5.zhihuishu.com/*
 // @match        *://onlineexamh5new.zhihuishu.com/*
@@ -288,9 +288,6 @@
     return [
       `自动答题:${state.config.autoQuiz ? "开" : "关"}`,
       `自动开测:${state.config.autoOpenRegularExam ? "开" : "关"}`,
-      `上报拦截:${state.config.blockReportApis ? "开" : "关"}`,
-      `检测拦截:${state.config.blockDetectApis ? "开" : "关"}`,
-      `反反调试:${state.config.antiAntiDebug ? "开" : "关"}`,
     ].join(" | ");
   }
 
@@ -2766,14 +2763,25 @@
           watchState: confirmed.watchState,
         });
       } else if (state.serverProgress.pendingVideoId === resolveCurrentVideoId(vm)) {
+        const pendingReason = String(state.serverProgress.pendingReason || reason || "");
         clearPendingServerProgressRefresh();
-        logWarn("progress", "server progress incomplete after refresh", {
-          reason,
-          videoId: normalizeVideoId(confirmed?.videoId) || resolveCurrentVideoId(vm),
-          targetStudyTime,
-          confirmedStudyTime,
-          watchState: confirmed?.watchState ?? null,
-        });
+        if (/endedServerConfirm|advanceServerConfirm/i.test(pendingReason)) {
+          logWarn("progress", "server progress incomplete after refresh", {
+            reason: pendingReason,
+            videoId: normalizeVideoId(confirmed?.videoId) || resolveCurrentVideoId(vm),
+            targetStudyTime,
+            confirmedStudyTime,
+            watchState: confirmed?.watchState ?? null,
+          });
+        } else {
+          logDebug("progress", "server progress refresh still incomplete", {
+            reason: pendingReason,
+            videoId: normalizeVideoId(confirmed?.videoId) || resolveCurrentVideoId(vm),
+            targetStudyTime,
+            confirmedStudyTime,
+            watchState: confirmed?.watchState ?? null,
+          });
+        }
       }
     }
 
@@ -3065,7 +3073,7 @@
       return "服务端进度仍未追上，继续等待";
     }
     if (scope === "progress" && /server progress incomplete after refresh/i.test(message)) {
-      return "服务端未确认完成，将回到开头重播";
+      return null;
     }
     if (scope === "progress" && /forced final progress flush at natural end/i.test(message)) {
       return "视频已播完，已按页面进度补齐最终落库";
@@ -3126,11 +3134,17 @@
     if (scope === "config" && /toggled /i.test(message)) {
       return "脚本配置已更新";
     }
-    if (scope === "bootstrap" && /bootstrapped|runtime loop started/i.test(message)) {
+    if (scope === "bootstrap" && /bootstrapped/i.test(message)) {
       return "脚本已完成初始化";
     }
-    if (scope === "vm" && /study vm patched|early vm patch probe completed/i.test(message)) {
+    if (scope === "bootstrap" && /runtime loop started/i.test(message)) {
+      return null;
+    }
+    if (scope === "vm" && /study vm patched/i.test(message)) {
       return "学习页已接管";
+    }
+    if (scope === "vm" && /early vm patch probe completed/i.test(message)) {
+      return null;
     }
     if (scope === "progress" && /page hidden snapshot captured/i.test(message)) {
       return null;
@@ -3182,22 +3196,25 @@
     if (!entries.length) return null;
 
     let completedCount = 0;
-    let totalPercent = 0;
+    let playedDuration = 0;
+    let totalDuration = 0;
     for (const entry of entries) {
       const studied = Number(entry.progressTarget?.isStudiedLesson || 0);
       const percentage = getDisplayedRecordPercent(entry.progressTarget);
+      const duration = Math.max(0, Number(entry.progressTarget?.videoSec || 0));
+      totalDuration += duration;
+      playedDuration += duration * (percentage / 100);
       if (studied === 1) {
         completedCount += 1;
-        totalPercent += 100;
-      } else {
-        totalPercent += percentage;
       }
     }
 
     return {
       completedCount,
       totalCount: entries.length,
-      percent: entries.length ? totalPercent / entries.length : 0,
+      playedDuration,
+      totalDuration,
+      percent: totalDuration > 0 ? (playedDuration / totalDuration) * 100 : 0,
     };
   }
 
@@ -3213,7 +3230,7 @@
     const courseProgress = getCourseProgress(vm);
     if (courseProgress) {
       lines.push(
-        `总课程进度：${courseProgress.completedCount}/${courseProgress.totalCount}（${formatPercent(courseProgress.percent)}）`,
+        `总课程进度：${formatDuration(courseProgress.playedDuration)} / ${formatDuration(courseProgress.totalDuration)}（${formatPercent(courseProgress.percent)}，已完成 ${courseProgress.completedCount}/${courseProgress.totalCount}）`,
       );
     }
 
