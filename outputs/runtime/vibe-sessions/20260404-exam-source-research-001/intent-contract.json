@@ -1,0 +1,21 @@
+{
+  "run_id": "20260404-exam-source-research-001",
+  "stage": "deep_interview",
+  "goal": "研究 exam 新源码并补全研究报告，为后续自动化接入提供源码级依据",
+  "deliverable": [
+    "补全后的 codebase-v2/report_v2_exam.md",
+    "源码级调用链与接入建议总结"
+  ],
+  "constraints": [
+    "允许 sub-agent 并行",
+    "sub-agent 必须明确其身份且不得继续派生",
+    "本轮不实现运行脚本",
+    "最终通过 cunzhi 交付"
+  ],
+  "acceptance_criteria": [
+    "完整覆盖 stuExamWeb.js 应用壳",
+    "完整覆盖 1.js 主答题与题型链路",
+    "补充自动化接入面与风险边界"
+  ],
+  "status": "completed"
+}
