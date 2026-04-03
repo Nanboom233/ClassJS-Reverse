@@ -303,6 +303,11 @@
     return EXAM_HOST_RE_LIST.some((rule) => rule.test(PAGE_HOST));
   }
 
+  function isDoExaminationRoute() {
+    const href = normalizeText(PAGE.location?.href || location.href || "");
+    return /\/doexamination\//i.test(href) || normalizeText(state.exam.routeName) === "doExamination";
+  }
+
   function normalizeText(value) {
     return String(value || "")
       .replace(/\u00a0/g, " ")
@@ -423,38 +428,18 @@
   }
 
   function storeExamAnswer(questionInfo, answers, source = "page") {
-    if (!questionInfo || !Array.isArray(answers) || !answers.length) return false;
-    const signature = questionInfo.signature || buildExamQuestionSignature(questionInfo.text, questionInfo.options?.map((option) => option.text));
-    const normalizedAnswers = [...new Set(answers.map((item) => normalizeAnswerText(item)).filter(Boolean))];
-    if (!signature || !normalizedAnswers.length) return false;
-
-    const questionKey = `q:${normalizeQuestionText(questionInfo.text)}`;
-    const existing = state.exam.answerBank[signature];
-    if (existing && JSON.stringify(existing.answers) === JSON.stringify(normalizedAnswers)) {
-      return false;
-    }
-
-    const record = {
-      question: normalizeQuestionText(questionInfo.text),
-      answers: normalizedAnswers,
-      updatedAt: now(),
-      source,
-    };
-    state.exam.answerBank[signature] = record;
-    if (questionKey && questionKey !== "q:") {
-      state.exam.answerBank[questionKey] = record;
-    }
-    void gmSetValue(STORAGE_KEYS.examAnswerBank, state.exam.answerBank);
-    return true;
+    void questionInfo;
+    void answers;
+    void source;
+    // TODO: 现网已验证平时测试/考试页不会返回可直接复用的服务器答案。
+    // 保留占位函数，后续若接入人工模板或外部答案源，再恢复写入逻辑。
+    return false;
   }
 
   function lookupExamAnswer(questionInfo) {
-    if (!questionInfo) return [];
-    const signature = questionInfo.signature || buildExamQuestionSignature(questionInfo.text, questionInfo.options?.map((option) => option.text));
-    const questionKey = `q:${normalizeQuestionText(questionInfo.text)}`;
-    const record = state.exam.answerBank[signature] || state.exam.answerBank[questionKey];
-    if (!record || !Array.isArray(record.answers)) return [];
-    return record.answers.map((item) => normalizeAnswerText(item)).filter(Boolean);
+    void questionInfo;
+    // TODO: 现阶段考试页只保留运行时接管骨架，不再尝试从页面/缓存中自动取答案。
+    return [];
   }
 
   function isRuleMatched(url, rules) {
@@ -2099,7 +2084,32 @@
     };
   }
 
+  function isExamAnswerAutomationEnabled() {
+    // TODO: 后续若接入人工模板或外部答案源，在这里重新打开考试页自动作答。
+    return false;
+  }
+
+  function buildExamAnswerTodoTemplate(questionInfo) {
+    if (!questionInfo) return null;
+    return {
+      signature: questionInfo.signature || "",
+      question: questionInfo.text || "",
+      optionLabels: questionInfo.options.map((option) => option.label).filter(Boolean),
+      optionTexts: questionInfo.options.map((option) => option.text).filter(Boolean),
+      textInputCount: questionInfo.textInputs.length,
+    };
+  }
+
   function resolveQuestionTargets(questionInfo) {
+    if (!isExamAnswerAutomationEnabled()) {
+      return {
+        answers: [],
+        source: "todo-template",
+        fallback: false,
+        unresolved: true,
+      };
+    }
+
     const explicitAnswers = questionInfo.explicitAnswers || [];
     if (explicitAnswers.length) {
       storeExamAnswer(questionInfo, explicitAnswers, "page");
@@ -2314,6 +2324,12 @@
       return false;
     }
 
+    if (isDoExaminationRoute()) {
+      logOnce("exam-doexamination-todo", "warn", "exam", "formal exam runtime unsupported (TODO)");
+      updateUi("正式考试页暂未接入（TODO）");
+      return false;
+    }
+
     const pageVm = findHomeworkExamVm();
 
     if (tryStartExamFlow()) {
@@ -2328,7 +2344,24 @@
     }
 
     if (restoreExamAnsweringMode(questionInfo)) {
-      updateUi("已恢复平时测试自动答题");
+      updateUi("平时测试页已接管");
+    }
+
+    if (!isExamAnswerAutomationEnabled()) {
+      const todoTemplate = buildExamAnswerTodoTemplate(questionInfo);
+      logOnce(
+        `exam-answer-disabled:${questionInfo.signature || "unknown"}`,
+        "warn",
+        "exam",
+        "regular exam answer automation disabled (TODO)",
+        todoTemplate,
+      );
+      if (hasManualSubmitButton()) {
+        updateUi("已到最后一题，等待手动交卷");
+        return false;
+      }
+      updateUi("平时测试页已接管，自动取答案已禁用（TODO）");
+      return false;
     }
 
     if (questionInfo.explicitAnswers.length) {
@@ -3114,7 +3147,13 @@
       return "平时测试页运行时已接管";
     }
     if (scope === "exam" && /regular exam runtime recovered/i.test(message)) {
-      return "已恢复平时测试自动答题";
+      return "平时测试页运行时已恢复";
+    }
+    if (scope === "exam" && /regular exam answer automation disabled \(TODO\)/i.test(message)) {
+      return "平时测试自动取答案已禁用（TODO）";
+    }
+    if (scope === "exam" && /formal exam runtime unsupported \(TODO\)/i.test(message)) {
+      return "正式考试页暂未接入（TODO）";
     }
     if (scope === "answer" && /regular exam question answered/i.test(message)) {
       return "已自动作答平时测试当前题目";
@@ -3200,10 +3239,22 @@
     let totalDuration = 0;
     for (const entry of entries) {
       const studied = Number(entry.progressTarget?.isStudiedLesson || 0);
-      const percentage = getDisplayedRecordPercent(entry.progressTarget);
       const duration = Math.max(0, Number(entry.progressTarget?.videoSec || 0));
+      let recordedDuration = Math.max(0, Number(entry.progressTarget?.studyTotalTime || 0));
+      const entryVideoId = normalizeVideoId(entry.progressTarget?.videoId);
+      if (entryVideoId && entryVideoId === state.progressSync.videoId) {
+        recordedDuration = Math.max(recordedDuration, Number(state.progressSync.totalStudyTime || 0));
+      }
+      if (!(recordedDuration > 0) && duration > 0) {
+        const percentage = clampPercent(entry.progressTarget?.percentage || 0);
+        if (percentage > 0) {
+          recordedDuration = duration * (percentage / 100);
+        } else if (studied === 1) {
+          recordedDuration = duration;
+        }
+      }
       totalDuration += duration;
-      playedDuration += duration * (percentage / 100);
+      playedDuration += Math.min(duration, recordedDuration);
       if (studied === 1) {
         completedCount += 1;
       }
@@ -3574,8 +3625,7 @@
     state.config.blockReportApis = await gmGetValue(STORAGE_KEYS.blockReportApis, true);
     state.config.blockDetectApis = await gmGetValue(STORAGE_KEYS.blockDetectApis, true);
     state.config.antiAntiDebug = await gmGetValue(STORAGE_KEYS.antiAntiDebug, true);
-    const answerBank = await gmGetValue(STORAGE_KEYS.examAnswerBank, {});
-    state.exam.answerBank = answerBank && typeof answerBank === "object" ? answerBank : {};
+    state.exam.answerBank = Object.create(null);
     state.exam.session = await gmGetValue(STORAGE_KEYS.examSession, null);
     logSuccess("config", "loaded config", { ...state.config });
   }
