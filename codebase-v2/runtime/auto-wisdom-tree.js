@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         2026 智慧树自动浇水施肥开花结果 - Enhanced
 // @namespace    auto-wisdom-tree
-// @version      0.1.5
+// @version      0.1.6
 // @description  智慧树是一棵树
 // @match        *://studyvideoh5.zhihuishu.com/*
 // @match        *://onlineexamh5new.zhihuishu.com/*
@@ -67,6 +67,7 @@
     lastToastAt: 0,
     runtimeTimerId: 0,
     vmProbeTimerId: 0,
+    examVmProbeTimerId: 0,
     logKeys: new Set(),
     antiDebug: {
       installed: false,
@@ -91,10 +92,20 @@
     exam: {
       answerBank: {},
       session: null,
+      rootVm: null,
+      store: null,
+      pageVm: null,
+      routeName: "",
+      routeParams: null,
+      captureMode: "",
+      captureAt: 0,
       recoveredThisPage: false,
       lastSignature: "",
       lastAnsweredAt: 0,
       lastAdvancedAt: 0,
+      unresolvedSignature: "",
+      lastUnresolvedAt: 0,
+      lastDetectTriggerAt: 0,
       lastLaunchKey: "",
       lastLaunchAt: 0,
     },
@@ -619,6 +630,50 @@
     }
   }
 
+  function getTimerCallbackSource(callback) {
+    if (typeof callback === "string") {
+      return normalizeText(callback);
+    }
+    if (typeof callback === "function") {
+      try {
+        return normalizeText(Function.prototype.toString.call(callback));
+      } catch (_error) {
+        return normalizeText(String(callback));
+      }
+    }
+    return "";
+  }
+
+  function isSuspiciousExamDetectCallback(callback) {
+    if (!isExamPage() || !state.config.blockDetectApis) return false;
+    const source = getTimerCallbackSource(callback);
+    if (!source) return false;
+    if (/检测到异常脚本/.test(source)) return true;
+    if (/collectLog\s*\(/i.test(source) && /window\.XMLHttpRequest/i.test(source)) return true;
+    if (/\$alert\s*\(/i.test(source) && /window\.close\s*\(/i.test(source)) return true;
+    return false;
+  }
+
+  function markExamDetectTriggered(reason, payload) {
+    state.exam.lastDetectTriggerAt = now();
+    if (reason) {
+      logOnce(`exam-detect:${reason}`, "warn", "detect", reason, payload);
+    }
+    return true;
+  }
+
+  function shouldBlockExamWindowClose(stackText = "") {
+    if (!isExamPage() || !state.config.blockDetectApis) return false;
+    const lastDetectTriggerAt = Number(state.exam.lastDetectTriggerAt || 0);
+    if (lastDetectTriggerAt > 0 && now() - lastDetectTriggerAt < 5000) {
+      return true;
+    }
+    const normalizedStack = normalizeText(stackText).toLowerCase();
+    if (!normalizedStack) return false;
+    return /checkout/.test(normalizedStack)
+      || (/collectlog/.test(normalizedStack) && /close/.test(normalizedStack));
+  }
+
   function installAntiDebugGuards() {
     if (state.antiDebug.installed || !state.config.antiAntiDebug) return;
     state.antiDebug.installed = true;
@@ -677,7 +732,17 @@
         PAGE[name] = new Proxy(PAGE[name], {
           apply(target, thisArg, args) {
             if (state.config.antiAntiDebug && args.length > 0) {
-              args[0] = stripDebuggerStatements(args[0]);
+              if (isSuspiciousExamDetectCallback(args[0])) {
+                const blockedReason = `homework detect timer blocked (${name})`;
+                args[0] = markWrapped(function awtBlockedExamDetectTimerCallback() {
+                  markExamDetectTriggered(blockedReason, {
+                    timer: name,
+                  });
+                  return true;
+                });
+              } else {
+                args[0] = stripDebuggerStatements(args[0]);
+              }
             }
             return Reflect.apply(target, thisArg, args);
           },
@@ -690,6 +755,27 @@
 
     installTimerProxy("setTimeout");
     installTimerProxy("setInterval");
+
+    try {
+      if (typeof PAGE.close === "function") {
+        const originalClose = PAGE.close.bind(PAGE);
+        PAGE.close = markWrapped(new Proxy(originalClose, {
+          apply(target, thisArg, args) {
+            const stack = safeCall(() => String(new Error().stack || ""), "");
+            if (shouldBlockExamWindowClose(stack)) {
+              markExamDetectTriggered("homework detect window.close blocked", {
+                stack,
+              });
+              return false;
+            }
+            return Reflect.apply(target, thisArg, args);
+          },
+        }));
+        logSuccess("anti-debug", "window.close guard installed");
+      }
+    } catch (error) {
+      logError("anti-debug", "window.close guard install failed", error);
+    }
   }
 
   function normalizeUrl(input) {
@@ -1336,6 +1422,27 @@
     logSuccess("bootstrap", "vm patch probe started");
   }
 
+  function startExamVmPatchProbe() {
+    if (state.examVmProbeTimerId) return;
+
+    const probe = () => {
+      const pageVm = findHomeworkExamVm();
+      if (!pageVm || !pageVm.__awt_exam_patched__) return;
+      if (state.examVmProbeTimerId) {
+        clearInterval(state.examVmProbeTimerId);
+        state.examVmProbeTimerId = 0;
+      }
+      logSuccess("exam", "homework exam probe completed", {
+        captureMode: state.exam.captureMode || "unknown",
+      });
+    };
+
+    probe();
+    if (state.exam.pageVm && state.exam.pageVm.__awt_exam_patched__) return;
+    state.examVmProbeTimerId = setInterval(probe, 100);
+    logSuccess("bootstrap", "exam vm patch probe started");
+  }
+
   function ensureVideoState(vm) {
     const video = getPlayableVideo();
     if (!video) return;
@@ -1474,6 +1581,273 @@
     if (!studentExamDto || typeof studentExamDto !== "object") return false;
     const examState = Number(studentExamDto.state);
     return examState !== 3 && examState !== 4;
+  }
+
+  function buildExamRouteParams(routeLike) {
+    const params = routeLike?.params || {};
+    const session = state.exam.session && typeof state.exam.session === "object" ? state.exam.session : {};
+    return {
+      recruitId: normalizeVideoId(params.recruitId) || normalizeVideoId(session.recruitId),
+      stuExamId: normalizeVideoId(params.stuExamId) || normalizeVideoId(session.studentExamId || session.stuExamId),
+      examId: normalizeVideoId(params.examId) || normalizeVideoId(session.examId),
+      courseId: normalizeVideoId(params.courseId) || normalizeVideoId(session.courseId),
+      schoolId: normalizeVideoId(params.schoolId) || normalizeVideoId(session.schoolId),
+      meetCourseType: normalizeVideoId(params.meetCourseType) || normalizeVideoId(session.meetCourseType),
+    };
+  }
+
+  function isHomeworkExamVm(candidate) {
+    return Boolean(
+      candidate
+      && typeof candidate === "object"
+      && typeof candidate.openHomework === "function"
+      && typeof candidate.switchQuestion === "function"
+      && typeof candidate.beforeTemporarySave === "function"
+      && typeof candidate.beforeDirectSubmit === "function"
+      && typeof candidate.saveSuccessChild === "function"
+      && candidate.$store
+      && candidate.$route
+    );
+  }
+
+  function getHomeworkAnswerRefs(pageVm) {
+    const answerRefs = pageVm?.$refs?.answerData;
+    if (Array.isArray(answerRefs)) {
+      return answerRefs.filter(Boolean);
+    }
+    return answerRefs ? [answerRefs] : [];
+  }
+
+  function getHomeworkQuestionTotal(pageVm) {
+    const answerRefs = getHomeworkAnswerRefs(pageVm);
+    if (answerRefs.length) return answerRefs.length;
+
+    if (Array.isArray(pageVm?.allQuestionIdArray)) {
+      const total = pageVm.allQuestionIdArray.reduce((count, part) => {
+        return count + (Array.isArray(part?.questionDtos) ? part.questionDtos.length : 0);
+      }, 0);
+      if (total > 0) return total;
+    }
+
+    if (Array.isArray(pageVm?.alllQuestionTest) && pageVm.alllQuestionTest.length) {
+      return pageVm.alllQuestionTest.length;
+    }
+
+    const problemNum = Number(pageVm?.examinationArr?.problemNum || 0);
+    return problemNum > 0 ? problemNum : 0;
+  }
+
+  function isHomeworkExamLastQuestion(pageVm) {
+    const currentQuestionIndex = Number(pageVm?.currentQuestionIndex);
+    const total = getHomeworkQuestionTotal(pageVm);
+    return Number.isFinite(currentQuestionIndex) && total > 0 && currentQuestionIndex >= total - 1;
+  }
+
+  function resolveHomeworkExamVmFromStore(store) {
+    const pageVm = store?.state?.doHomeWorkObj?.doHomeWorkPointerObj;
+    return isHomeworkExamVm(pageVm) ? pageVm : null;
+  }
+
+  function patchHomeworkExamVm(vm) {
+    if (!vm || vm.__awt_exam_patched__) return;
+
+    if (typeof vm.hijackAllEls === "function" && !vm.hijackAllEls[WRAP_MARK]) {
+      vm.hijackAllEls = wrapVmMethod(vm, vm.hijackAllEls, (original) => function (...args) {
+        if (state.config.blockDetectApis) {
+          logWarn("detect", "homework hijackAllEls blocked");
+          return true;
+        }
+        return original(...args);
+      });
+    }
+
+    if (typeof vm.checkoutNotTrustScript === "function" && !vm.checkoutNotTrustScript[WRAP_MARK]) {
+      vm.checkoutNotTrustScript = wrapVmMethod(vm, vm.checkoutNotTrustScript, (original) => function (...args) {
+        if (state.config.blockDetectApis) {
+          clearInterval(this.checkTimer);
+          return true;
+        }
+        return original(...args);
+      });
+    }
+
+    if (typeof vm.checkout === "function" && !vm.checkout[WRAP_MARK]) {
+      vm.checkout = wrapVmMethod(vm, vm.checkout, (original) => function (...args) {
+        if (state.config.blockDetectApis) {
+          clearInterval(this.checkTimer);
+          return true;
+        }
+        return original(...args);
+      });
+    }
+
+    if (typeof vm.collectLog === "function" && !vm.collectLog[WRAP_MARK]) {
+      vm.collectLog = wrapVmMethod(vm, vm.collectLog, (original) => function (...args) {
+        if (state.config.blockDetectApis || state.config.blockReportApis) {
+          logWarn("detect", "collectLog blocked");
+          return false;
+        }
+        return original(...args);
+      });
+    }
+
+    if (typeof vm.$alert === "function" && !vm.$alert[WRAP_MARK]) {
+      vm.$alert = wrapVmMethod(vm, vm.$alert, (original) => function (message, ...rest) {
+        if (state.config.blockDetectApis && /检测到异常脚本/.test(normalizeText(message))) {
+          markExamDetectTriggered("homework detect alert blocked");
+          return Promise.resolve(false);
+        }
+        return original(message, ...rest);
+      });
+    }
+
+    if (typeof vm.saveLog === "function" && !vm.saveLog[WRAP_MARK]) {
+      vm.saveLog = wrapVmMethod(vm, vm.saveLog, (original) => function (...args) {
+        if (state.config.blockReportApis) {
+          logWarn("network", "saveLog blocked");
+          return Promise.resolve({
+            code: 0,
+            status: 200,
+            rt: {},
+          });
+        }
+        return original(...args);
+      });
+    }
+
+    if (state.config.blockDetectApis) {
+      safeCall(() => clearInterval(vm.checkTimer));
+    }
+
+    Object.defineProperty(vm, "__awt_exam_patched__", {
+      value: true,
+    });
+  }
+
+  function captureHomeworkExamContext(pageVm, captureMode = "page-vm") {
+    if (!isHomeworkExamVm(pageVm)) return null;
+
+    const rootVm = pageVm.$root || state.exam.rootVm || null;
+    const store = pageVm.$store || rootVm?.$store || state.exam.store || null;
+    const route = pageVm.$route || rootVm?.$route || null;
+    const routeName = normalizeText(route?.name);
+    const routeParams = buildExamRouteParams(route);
+    const routeChanged = JSON.stringify(state.exam.routeParams || {}) !== JSON.stringify(routeParams || {});
+    const captureChanged = (
+      state.exam.pageVm !== pageVm
+      || state.exam.captureMode !== captureMode
+      || state.exam.routeName !== routeName
+      || routeChanged
+    );
+
+    state.exam.rootVm = rootVm || state.exam.rootVm;
+    state.exam.store = store || state.exam.store;
+    state.exam.pageVm = pageVm;
+    state.exam.routeName = routeName || state.exam.routeName;
+    state.exam.routeParams = routeParams;
+    state.exam.captureMode = captureMode;
+    state.exam.captureAt = now();
+
+    patchHomeworkExamVm(pageVm);
+
+    if (captureChanged) {
+      armExamSession({
+        ...(state.exam.session && typeof state.exam.session === "object" ? state.exam.session : {}),
+        host: PAGE_HOST,
+        recruitId: routeParams.recruitId,
+        studentExamId: routeParams.stuExamId,
+        examId: routeParams.examId,
+        courseId: routeParams.courseId,
+        schoolId: routeParams.schoolId,
+        meetCourseType: routeParams.meetCourseType,
+        routeName: routeName || "doHomework",
+        captureMode,
+        capturedAt: now(),
+      });
+      logSuccess("exam", "homework exam runtime captured", {
+        captureMode,
+        routeName: routeName || "doHomework",
+      });
+    }
+
+    return pageVm;
+  }
+
+  function findHomeworkExamVm() {
+    if (state.exam.pageVm && isHomeworkExamVm(state.exam.pageVm)) {
+      return captureHomeworkExamContext(state.exam.pageVm, state.exam.captureMode || "cached-page-vm");
+    }
+
+    if (state.exam.store) {
+      const cachedPageVm = resolveHomeworkExamVmFromStore(state.exam.store);
+      if (cachedPageVm) {
+        return captureHomeworkExamContext(cachedPageVm, "store-pointer");
+      }
+    }
+
+    const queue = [];
+    if (document.documentElement) queue.push(document.documentElement);
+    if (document.body && document.body !== document.documentElement) queue.push(document.body);
+
+    const visited = new Set();
+    for (let index = 0; index < queue.length; index += 1) {
+      const node = queue[index];
+      if (!node || visited.has(node)) continue;
+      visited.add(node);
+
+      const vm = node.__vue__ || node.__vueParentComponent?.proxy;
+      if (vm) {
+        let current = vm;
+        for (let depth = 0; depth < 12 && current; depth += 1, current = current.$parent) {
+          const rootVm = current.$root || null;
+          const store = current.$store || rootVm?.$store || null;
+          if (rootVm) state.exam.rootVm = rootVm;
+          if (store) state.exam.store = store;
+
+          const storePointer = resolveHomeworkExamVmFromStore(store);
+          if (storePointer) {
+            return captureHomeworkExamContext(storePointer, "store-pointer");
+          }
+
+          if (isHomeworkExamVm(current)) {
+            return captureHomeworkExamContext(current, "dom-ancestor");
+          }
+        }
+      }
+
+      if (node.children && node.children.length) {
+        for (const child of node.children) {
+          queue.push(child);
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function advanceHomeworkExam(pageVm, options) {
+    const normalizedOptions = options && typeof options === "object" ? options : {};
+    const force = Boolean(normalizedOptions.force);
+    if (!isHomeworkExamVm(pageVm)) return false;
+    const minAdvanceDelay = force ? 250 : 1200;
+    if (now() - state.exam.lastAdvancedAt < minAdvanceDelay) return false;
+    if (!force && !isDelayElapsed(state.exam.lastAnsweredAt)) return false;
+    if (isHomeworkExamLastQuestion(pageVm)) return false;
+
+    const currentQuestionIndex = Number(pageVm.currentQuestionIndex || 0);
+    const advanced = safeCall(() => {
+      pageVm.switchQuestion(1, 0);
+      return true;
+    }, false);
+    if (!advanced) return false;
+
+    state.exam.lastAdvancedAt = now();
+    logSuccess("answer", force ? "regular exam unresolved question skipped" : "regular exam action clicked", {
+      driver: "page-vm",
+      currentQuestionIndex,
+      nextQuestionIndex: currentQuestionIndex + 1,
+    });
+    return true;
   }
 
   function extractQuestionTextFromRoot(root) {
@@ -1650,18 +2024,11 @@
       };
     }
 
-    if (questionInfo.options.length) {
-      return {
-        answers: [questionInfo.options[0].text || questionInfo.options[0].label],
-        source: "fallback",
-        fallback: true,
-      };
-    }
-
     return {
       answers: [],
-      source: "empty",
+      source: "unresolved",
       fallback: false,
+      unresolved: true,
     };
   }
 
@@ -1673,14 +2040,36 @@
     ));
   }
 
-  function fillExamTextInputs(questionInfo) {
-    if (!questionInfo.textInputs.length) return false;
+  function fillExamTextInputs(questionInfo, answers = []) {
+    if (!questionInfo.textInputs.length || !answers.length) return false;
+    const normalizedAnswers = answers.map((item) => normalizeText(item)).filter(Boolean);
+    if (!normalizedAnswers.length) return false;
     let changed = false;
-    for (const input of questionInfo.textInputs) {
-      if (String(input.value || "").trim()) continue;
-      changed = safeCall(() => setNativeInputValue(input, "已完成"), changed) || changed;
+    for (let index = 0; index < questionInfo.textInputs.length; index += 1) {
+      const input = questionInfo.textInputs[index];
+      const nextValue = normalizedAnswers[Math.min(index, normalizedAnswers.length - 1)] || normalizedAnswers[0];
+      if (!nextValue) continue;
+      if (String(input.value || "").trim() === nextValue) continue;
+      changed = safeCall(() => setNativeInputValue(input, nextValue), changed) || changed;
     }
     return changed;
+  }
+
+  function noteExamQuestionUnresolved(questionInfo, reason = "missing-answer") {
+    if (!questionInfo?.signature) return false;
+    const shouldLog = (
+      state.exam.unresolvedSignature !== questionInfo.signature
+      || isDelayElapsed(state.exam.lastUnresolvedAt, now(), 15000)
+    );
+    state.exam.unresolvedSignature = questionInfo.signature;
+    state.exam.lastUnresolvedAt = now();
+    if (shouldLog) {
+      logWarn("answer", "regular exam unresolved, waiting for explicit answer", {
+        question: questionInfo.text,
+        reason,
+      });
+    }
+    return false;
   }
 
   function answerCurrentExamQuestion(questionInfo) {
@@ -1693,6 +2082,10 @@
     }
 
     const resolution = resolveQuestionTargets(questionInfo);
+    if (!resolution.answers.length) {
+      return noteExamQuestionUnresolved(questionInfo, resolution.source || "missing-answer");
+    }
+
     const targetOptions = matchTargetOptions(questionInfo, resolution.answers);
     let changed = false;
 
@@ -1701,24 +2094,22 @@
         if (option.selected) continue;
         changed = clickElement(option.element) || changed;
       }
+    } else if (questionInfo.textInputs.length) {
+      changed = fillExamTextInputs(questionInfo, resolution.answers) || changed;
     } else {
-      changed = fillExamTextInputs(questionInfo) || changed;
+      return noteExamQuestionUnresolved(questionInfo, "target-mismatch");
     }
 
     if (!changed) return false;
 
     state.exam.lastSignature = questionInfo.signature;
     state.exam.lastAnsweredAt = now();
-    if (resolution.fallback) {
-      logWarn("answer", "regular exam fallback answer used", {
-        question: questionInfo.text,
-      });
-    } else {
-      logSuccess("answer", "regular exam question answered", {
-        question: questionInfo.text,
-        source: resolution.source,
-      });
-    }
+    state.exam.unresolvedSignature = "";
+    state.exam.lastUnresolvedAt = 0;
+    logSuccess("answer", "regular exam question answered", {
+      question: questionInfo.text,
+      source: resolution.source,
+    });
     return true;
   }
 
@@ -1770,16 +2161,24 @@
     ], "regular exam start clicked");
   }
 
-  function tryAdvanceExamFlow() {
-    if (now() - state.exam.lastAdvancedAt < 1200) return false;
-    if (!isDelayElapsed(state.exam.lastAnsweredAt)) return false;
+  function tryAdvanceExamFlow(pageVm, questionInfo, options) {
+    const normalizedOptions = options && typeof options === "object" ? options : {};
+    const force = Boolean(normalizedOptions.force);
+    const minAdvanceDelay = force ? 250 : 1200;
+    if (now() - state.exam.lastAdvancedAt < minAdvanceDelay) return false;
+    if (!force && !isDelayElapsed(state.exam.lastAnsweredAt)) return false;
+    if (!force && questionInfo?.signature && state.exam.unresolvedSignature === questionInfo.signature) return false;
+
+    if (pageVm && advanceHomeworkExam(pageVm, normalizedOptions)) {
+      return true;
+    }
 
     return clickExamAction([
       /保存并下一题/i,
       /^下一题$/i,
       /下一页/i,
       /下一步/i,
-    ], "regular exam action clicked");
+    ], force ? "regular exam unresolved question skipped" : "regular exam action clicked");
   }
 
   function hasManualSubmitButton() {
@@ -1802,6 +2201,8 @@
     armExamSession({
       ...(state.exam.session && typeof state.exam.session === "object" ? state.exam.session : {}),
       host: PAGE_HOST,
+      routeName: state.exam.routeName || "doHomework",
+      captureMode: state.exam.captureMode || "fallback-dom",
       recoverMode: "exam-page-runtime",
       recoveredAt: now(),
     });
@@ -1818,6 +2219,8 @@
       return false;
     }
 
+    const pageVm = findHomeworkExamVm();
+
     if (tryStartExamFlow()) {
       updateUi("已进入平时测试答题页");
       return true;
@@ -1825,7 +2228,7 @@
 
     const questionInfo = readCurrentExamQuestion();
     if (!questionInfo || (!questionInfo.options.length && !questionInfo.textInputs.length)) {
-      updateUi("等待平时测试题目加载");
+      updateUi(pageVm ? "平时测试页已接管，等待题目加载" : "等待平时测试题目加载");
       return false;
     }
 
@@ -1842,7 +2245,16 @@
       return true;
     }
 
-    if (tryAdvanceExamFlow()) {
+    if (state.exam.unresolvedSignature === questionInfo.signature) {
+      if (tryAdvanceExamFlow(pageVm, questionInfo, { force: true })) {
+        updateUi("当前平时测试题未命中答案，已自动跳过");
+        return true;
+      }
+      updateUi("当前平时测试题未命中答案，等待下一步条件满足");
+      return false;
+    }
+
+    if (tryAdvanceExamFlow(pageVm, questionInfo)) {
       updateUi("平时测试已进入下一步");
       return true;
     }
@@ -2279,14 +2691,20 @@
     if (scope === "exam" && /launch regular exam/i.test(message)) {
       return "当前节存在平时测试，已自动打开";
     }
+    if (scope === "exam" && /homework exam runtime captured/i.test(message)) {
+      return "平时测试页运行时已接管";
+    }
     if (scope === "exam" && /regular exam runtime recovered/i.test(message)) {
       return "已恢复平时测试自动答题";
     }
     if (scope === "answer" && /regular exam question answered/i.test(message)) {
       return "已自动作答平时测试当前题目";
     }
-    if (scope === "answer" && /regular exam fallback answer used/i.test(message)) {
-      return "平时测试当前题缺少现成答案，已按兜底方案作答";
+    if (scope === "answer" && /regular exam unresolved, waiting for explicit answer/i.test(message)) {
+      return null;
+    }
+    if (scope === "answer" && /regular exam unresolved question skipped/i.test(message)) {
+      return "当前平时测试题未命中答案，已自动跳过";
     }
     if (scope === "answer" && /regular exam start clicked/i.test(message)) {
       return "已进入平时测试答题页";
@@ -2786,6 +3204,7 @@
     installAntiDebugGuards();
 
     if (isExamPage()) {
+      findHomeworkExamVm();
       handleExamPageRuntime();
       return;
     }
@@ -2835,6 +3254,8 @@
     patchSendBeacon();
     if (isStudyPage()) {
       startVmPatchProbe();
+    } else if (isExamPage()) {
+      startExamVmPatchProbe();
     }
 
     await loadConfig();

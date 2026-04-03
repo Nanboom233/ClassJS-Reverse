@@ -28,9 +28,10 @@ expect(/@match\s+\*:\/\/exam\.zhihuishu\.com\/\*/, "metadata match exam host");
 expectText("const ANSWER_INTERVAL_MS = 5000;", "forced five-second answer interval");
 expect(/function installDevtoolsHotkeyGuard\(/, "lightweight devtools hotkey guard helper");
 expect(/function startVmPatchProbe\(/, "early vm patch probe helper");
+expect(/function startExamVmPatchProbe\(/, "early exam vm patch probe helper");
 expect(/if \(document\.readyState === "loading"\) return;/, "runtimeTick skips during loading");
 expect(/installDevtoolsHotkeyGuard\(\);\s*installAntiDebugGuards\(\);\s*patchFetch\(\);\s*patchXhr\(\);\s*patchSendBeacon\(\);/s, "bootstrap restores anti-debug debugger bypass at startup");
-expect(/if \(isStudyPage\(\)\) \{\s*startVmPatchProbe\(\);\s*\}/s, "study-page bootstrap still starts the vm patch probe");
+expect(/if \(isStudyPage\(\)\) \{\s*startVmPatchProbe\(\);\s*\} else if \(isExamPage\(\)\) \{\s*startExamVmPatchProbe\(\);\s*\}/s, "bootstrap should start both study and exam vm patch probes");
 expect(/Object\.defineProperty\(OriginalFunction\.prototype,\s*"constructor",\s*\{[\s\S]*value:\s*FunctionProxy/s, "Function.prototype.constructor should point to the debugger-stripping proxy");
 assert.doesNotMatch(script, /Object\.defineProperty\(OriginalFunction\.prototype,\s*"constructor",\s*\{[\s\S]*get\s*\(/s, "Function.prototype.constructor override must stay data-property based");
 assert.ok(hotkeyGuardSection, "missing hotkey guard section");
@@ -39,6 +40,8 @@ assert.doesNotMatch(hotkeyGuardSection[0], /stopImmediatePropagation\(/, "devtoo
 assert.doesNotMatch(script, /captured devtools hotkey/, "legacy hotkey capture logging must stay removed");
 assert.doesNotMatch(script, /已绕过异常脚本检测/, "user-side detect bypass spam copy must stay removed");
 assert.doesNotMatch(script, /stripped debugger statement from dynamic code/i, "dynamic anti-debug strip spam log must stay removed");
+assert.doesNotMatch(script, /regular exam fallback answer used/, "dangerous first-option regular exam fallback must stay removed");
+assert.doesNotMatch(script, /questionInfo\.options\[0\]\.text\s*\|\|\s*questionInfo\.options\[0\]\.label/, "regular exam should no longer default to the first option");
 
 [
   "function normalizeVideoId(",
@@ -58,6 +61,7 @@ assert.doesNotMatch(script, /stripped debugger statement from dynamic code/i, "d
   "function patchSendBeacon(",
   "function installAntiDebugGuards(",
   "function startVmPatchProbe(",
+  "function startExamVmPatchProbe(",
   "function installProgressDebugHooks(",
   "function snapshotProgressState(",
   "function trackProgressTrend(",
@@ -76,11 +80,18 @@ assert.doesNotMatch(script, /stripped debugger statement from dynamic code/i, "d
   "function markAdvanceAttempt(",
   "function retryCurrentVideoIfNeeded(",
   "function stripDebuggerStatements(",
+  "function getTimerCallbackSource(",
+  "function isSuspiciousExamDetectCallback(",
+  "function markExamDetectTriggered(",
+  "function shouldBlockExamWindowClose(",
   "function isDevtoolsKeyEvent(",
   "function isStudyPage(",
   "function isExamPage(",
   "function buildExamSessionPayload(",
   "function armExamSession(",
+  "function isHomeworkExamVm(",
+  "function findHomeworkExamVm(",
+  "function advanceHomeworkExam(",
   "function restoreExamAnsweringMode(",
   "function readCurrentExamQuestion(",
   "function handleExamPageRuntime(",
@@ -102,11 +113,16 @@ assert.doesNotMatch(script, /stripped debugger statement from dynamic code/i, "d
   'currentVideoChangedAt: 0',
   'advanceCooldownUntil: 0',
   'lastReplayVideoId: null',
+  'homework detect timer blocked',
+  'homework detect alert blocked',
   'Function proxy installed',
   'Function constructor proxy installed',
   'eval proxy installed',
   'page devtools hotkey bypass installed',
+  'window.close guard installed',
   'early vm patch probe completed',
+  'exam vm patch probe started',
+  'homework exam runtime captured',
   'aberrantCloseBtn blocked',
   'xhr fallback blocked [${kind}]',
   'progress debug hooks installed',
@@ -119,8 +135,10 @@ assert.doesNotMatch(script, /stripped debugger statement from dynamic code/i, "d
   'launch regular exam',
   'regular exam runtime recovered',
   'regular exam question answered',
-  'regular exam fallback answer used',
+  'regular exam unresolved, waiting for explicit answer',
+  'regular exam unresolved question skipped',
   'regular exam action clicked',
+  '当前平时测试题未命中答案，已自动跳过',
   '已到最后一题，等待手动交卷',
   'jump to first unfinished video',
   'video ended but recorded progress is incomplete, retry from start',
@@ -131,6 +149,14 @@ assert.doesNotMatch(script, /stripped debugger statement from dynamic code/i, "d
 expect(
   /if \(isRecordedProgressComplete\(vm\) && jumpToNextPendingVideo\(vm, "recorded progress completed", currentVideoId\)\) return;/,
   "completed current video jumps to next unfinished before waiting for natural finish",
+);
+expect(
+  /if \(isSuspiciousExamDetectCallback\(args\[0\]\)\) \{/,
+  "timer proxy should detect and replace created-stage homework detect callbacks before they register",
+);
+expect(
+  /if \(shouldBlockExamWindowClose\(stack\)\) \{/,
+  "window.close guard should only activate for the exam detect chain",
 );
 expect(
   /if \(!currentVideoId \|\| shouldDelayReplay\(currentVideoId\)\) return false;/,
@@ -202,11 +228,18 @@ expect(
   "## 验证",
   "平时测试",
   "自动打开平时测试",
+  "rootVm / store / doHomeWorkPointerObj",
+  "父页面 `switchQuestion(1, 0)`",
+  "不再默认点第一项",
+  "当前平时测试题未命中答案，已自动跳过",
+  "不受 5 秒答题节流限制",
   "每题固定延迟 5 秒",
   "中途打开脚本也会直接恢复自动答题",
   "等待手动交卷",
   "列表中第一个未完成视频",
   "已移除页面侧“已绕过异常脚本检测”提示",
+  "checkoutNotTrustScript -> checkout",
+  "window.close()",
   "进度未完成，重播当前视频",
   "后台标签页不同步调试",
 ].forEach((text) => expectText(text, `summary keeps ${text}`, summary));
@@ -244,6 +277,8 @@ function instantiateFunction(name, deps = {}) {
 }
 
 const normalizeVideoId = instantiateFunction("normalizeVideoId");
+const normalizeText = instantiateFunction("normalizeText");
+const getTimerCallbackSource = instantiateFunction("getTimerCallbackSource", { normalizeText });
 const resolveCurrentVideoId = instantiateFunction("resolveCurrentVideoId", { normalizeVideoId });
 const observeState = {
   currentVideoId: null,
@@ -282,7 +317,13 @@ const buildUiLogMessage = instantiateFunction("buildUiLogMessage", {
   shortenUiUrl,
 });
 const tryAdvanceExamFlowSource = extractFunction("tryAdvanceExamFlow");
+const resolveQuestionTargetsSource = extractFunction("resolveQuestionTargets");
 const hasManualSubmitButtonSource = extractFunction("hasManualSubmitButton");
+const isHomeworkExamVm = instantiateFunction("isHomeworkExamVm");
+const resolveQuestionTargets = instantiateFunction("resolveQuestionTargets", {
+  storeExamAnswer: () => {},
+  lookupExamAnswer: () => [],
+});
 const getCourseProgress = instantiateFunction("getCourseProgress", {
   collectVideoEntries,
   clampPercent,
@@ -301,10 +342,92 @@ const markAdvanceAttempt = instantiateFunction("markAdvanceAttempt", {
   state: observeState,
   now: () => 2000,
 });
+const detectState = {
+  config: {
+    blockDetectApis: true,
+  },
+  exam: {
+    lastDetectTriggerAt: 0,
+  },
+};
+const detectLogs = [];
+const markExamDetectTriggered = instantiateFunction("markExamDetectTriggered", {
+  state: detectState,
+  now: () => 10000,
+  logOnce: (key, level, scope, message, payload) => detectLogs.push({ key, level, scope, message, payload }),
+});
+const isSuspiciousExamDetectCallback = instantiateFunction("isSuspiciousExamDetectCallback", {
+  isExamPage: () => true,
+  state: detectState,
+  getTimerCallbackSource,
+});
+const shouldBlockExamWindowClose = instantiateFunction("shouldBlockExamWindowClose", {
+  isExamPage: () => true,
+  state: detectState,
+  now: () => 10000,
+  normalizeText,
+});
 
 assert.strictEqual(normalizeVideoId(123), "123", "normalizeVideoId should stringify numeric ids");
 assert.strictEqual(normalizeVideoId("  abc  "), "abc", "normalizeVideoId should trim string ids");
 assert.strictEqual(normalizeVideoId("   "), null, "normalizeVideoId should drop empty ids");
+assert.ok(
+  /检测到异常脚本/.test(
+    getTimerCallbackSource(function () {
+      this.$alert("检测到异常脚本，为保证您正常答题，请您关闭插件，刷新页面后重新答题！");
+      this.collectLog(window.XMLHttpRequest);
+      setTimeout(function () {
+        window.close();
+      }, 2500);
+    }),
+  ),
+  "getTimerCallbackSource should retain the original detect callback source markers",
+);
+assert.strictEqual(
+  isSuspiciousExamDetectCallback(function () {
+    this.$alert("检测到异常脚本，为保证您正常答题，请您关闭插件，刷新页面后重新答题！");
+    this.collectLog(window.XMLHttpRequest);
+    setTimeout(function () {
+      window.close();
+    }, 2500);
+  }),
+  true,
+  "isSuspiciousExamDetectCallback should recognize the created-stage homework detect callback",
+);
+assert.strictEqual(
+  isSuspiciousExamDetectCallback(function () {
+    console.log("normal callback");
+  }),
+  false,
+  "isSuspiciousExamDetectCallback should ignore unrelated timer callbacks",
+);
+markExamDetectTriggered("homework detect timer blocked (setTimeout)");
+assert.strictEqual(
+  detectState.exam.lastDetectTriggerAt,
+  10000,
+  "markExamDetectTriggered should timestamp the latest blocked detect chain",
+);
+assert.strictEqual(
+  detectLogs[0]?.message,
+  "homework detect timer blocked (setTimeout)",
+  "markExamDetectTriggered should emit a single detect warning for the blocked chain",
+);
+assert.strictEqual(
+  shouldBlockExamWindowClose(""),
+  true,
+  "shouldBlockExamWindowClose should block close calls right after a detect chain is tripped",
+);
+detectState.exam.lastDetectTriggerAt = 0;
+assert.strictEqual(
+  shouldBlockExamWindowClose("at checkout (exam.js:1)\nat close (exam.js:2)"),
+  true,
+  "shouldBlockExamWindowClose should still catch detect-stack close attempts without a recent timestamp",
+);
+assert.strictEqual(
+  shouldBlockExamWindowClose("at saveSuccess (exam.js:1)"),
+  false,
+  "shouldBlockExamWindowClose should not block unrelated window.close flows such as normal save success",
+);
 assert.strictEqual(
   observeCurrentVideo({ lastViewVideoId: "next-video" }),
   "next-video",
@@ -443,6 +566,21 @@ assert.strictEqual(
   "opening the script midway through the exam page should resume auto-answer mode",
 );
 assert.strictEqual(
+  buildUiLogMessage("success", "exam", "homework exam runtime captured", {}),
+  "平时测试页运行时已接管",
+  "capturing the homework runtime should surface a concise Chinese page message",
+);
+assert.strictEqual(
+  buildUiLogMessage("warn", "answer", "regular exam unresolved, waiting for explicit answer", {}),
+  null,
+  "console-only unresolved warnings should stay hidden from the page log panel",
+);
+assert.strictEqual(
+  buildUiLogMessage("success", "answer", "regular exam unresolved question skipped", {}),
+  "当前平时测试题未命中答案，已自动跳过",
+  "missing answers should fast-skip without waiting for the normal five-second answer interval",
+);
+assert.strictEqual(
   buildUiLogMessage("warn", "detect", "notTrustScript blocked", {}),
   null,
   "detect bypass logs should stay hidden from the page log panel",
@@ -456,6 +594,60 @@ assert.doesNotMatch(
   tryAdvanceExamFlowSource,
   /提交答案|提交试卷|确认交卷|完成答题|保存并提交|\^交卷\$|\^提交\$/,
   "regular exam auto-advance must not auto-submit the paper",
+);
+assert.match(
+  tryAdvanceExamFlowSource,
+  /advanceHomeworkExam\(pageVm,\s*normalizedOptions\)/,
+  "regular exam auto-advance should prefer the captured page vm save chain",
+);
+assert.match(
+  tryAdvanceExamFlowSource,
+  /const minAdvanceDelay = force \? 250 : 1200;/,
+  "unresolved skip should use a short advance debounce instead of the normal five-second answer rhythm",
+);
+assert.match(
+  tryAdvanceExamFlowSource,
+  /if \(!force && !isDelayElapsed\(state\.exam\.lastAnsweredAt\)\) return false;/,
+  "the normal five-second answer delay should only apply to answered questions, not forced unresolved skips",
+);
+assert.doesNotMatch(
+  resolveQuestionTargetsSource,
+  /questionInfo\.options\[0\]/,
+  "resolveQuestionTargets should not guess by clicking the first option",
+);
+assert.deepStrictEqual(
+  resolveQuestionTargets({
+    explicitAnswers: [],
+    options: [{ text: "选项A", label: "A" }],
+  }),
+  {
+    answers: [],
+    source: "unresolved",
+    fallback: false,
+    unresolved: true,
+  },
+  "resolveQuestionTargets should stop on unresolved questions instead of fabricating an answer",
+);
+assert.strictEqual(
+  isHomeworkExamVm({
+    openHomework() {},
+    switchQuestion() {},
+    beforeTemporarySave() {},
+    beforeDirectSubmit() {},
+    saveSuccessChild() {},
+    $store: {},
+    $route: {},
+  }),
+  true,
+  "isHomeworkExamVm should recognize the doHomework page vm shape",
+);
+assert.strictEqual(
+  isHomeworkExamVm({
+    switchQuestion() {},
+    $store: {},
+  }),
+  false,
+  "isHomeworkExamVm should reject incomplete vm candidates",
 );
 [
   "/提交答案/i",
