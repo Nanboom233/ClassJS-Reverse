@@ -60,6 +60,10 @@
 
 ### 4. 自动答题
 
+当前脚本已经具备两条自动答题链：视频弹题链 + 平时测试链。
+
+#### 4.1 视频弹题
+
 通过扫描学习页 Vue 实例，直接接管已有页面方法：
 
 - `popupAnswer`
@@ -71,8 +75,31 @@
 
 1. 等待题组进入 `topicInfo.lessonTestQuestionUseInterfaceDtos`
 2. 读取题目选项中的正确答案
-3. 自动调用原页面保存逻辑提交答案
+3. **每题固定延迟 5 秒** 后再调用原页面保存逻辑提交答案
 4. 所有题目完成后自动关闭弹窗
+
+#### 4.2 平时测试
+
+脚本已额外覆盖以下平时测试域名：
+
+- `onlineexamh5new.zhihuishu.com`
+- `studentexambaseh5.zhihuishu.com`
+- `exam.zhihuishu.com`
+
+当前实现包含：
+
+1. 学习页在当前节**记录进度完成后**，按配置自动打开当前节平时测试
+2. 菜单新增 `自动打开平时测试` 开关，对应存储键 `awt:autoOpenRegularExam`
+3. 考试页自动解析当前题干、选项、显式答案和文本输入框
+4. **中途打开脚本也会直接恢复自动答题**：只要当前测试页已经有题目，脚本会立刻切回自动答题模式
+5. 命中显式答案时会写入本地 GM 题库，后续题目可直接复用
+6. **每题固定延迟 5 秒** 后再自动作答并进入下一题
+7. 到最后一题后**只停在手动交卷态**，页面状态提示：`已到最后一题，等待手动交卷`
+
+说明：
+
+- 当前阶段“平时测试”**不会自动交卷/自动提交试卷**
+- 自动推进只覆盖“开始答题 / 下一题”一类按钮，不覆盖“提交答案 / 交卷 / 保存并提交”
 
 ### 5. 自动续播
 
@@ -82,8 +109,8 @@
 - 维持 `1x`
 - 自动恢复播放
 - **只有记录进度确认完成**后才自动 `videoNext()`
-- 如果当前视频已完成，会优先在目录里查找**下一个未完成视频**并直接跳转
-- 即使当前视频只是“页面记录已完成”、还没有再次自然播完，也会直接跳到后续未完成视频
+- 如果当前视频已完成，会优先在目录里查找**列表中第一个未完成视频**并直接跳转
+- 即使当前视频只是“页面记录已完成”、还没有再次自然播完，也会直接跳到这个全列表自上而下找到的未完成目标
 - 如果视频自然播完，但记录进度仍未完成，则自动跳回开头重试
 
 当前实现里，“允许下一集”的条件不再直接依赖 `video.ended`，而是优先看页面记录状态：
@@ -101,12 +128,14 @@
 如果当前视频已经达到完成条件，则会：
 
 1. 扫描 `videoList -> videoLessons -> videoSmallLessons`
-2. 跳过已完成条目
-3. 找到当前条目之后的第一个未完成视频
+2. 从**整个列表顶部开始**跳过已完成条目
+3. 找到列表里第一个未完成视频
 4. 页面初始化到一个已完成视频时，也会立刻走这条查找链，不再等播放器自然播完
 5. 优先调用页面原生 `videoClick(...)` 直接切过去
 6. 对同一个 `source -> target` 跳转增加了短时防抖，避免切集状态未落稳时重复触发
 7. 只有在找不到未完成目标且当前视频已经自然播完时，才退回原页面的 `videoNext()`
+8. 当前视频 ID 一旦变化，就会重置“重播当前视频”的状态，避免上一集的结束态误伤下一集
+9. 对“已请求切集”和“刚切到新视频”都增加了短冷却，避免旧播放器的 `ended/currentTime` 残留值把新视频误判成需要回到开头
 
 ### 5.1 后台标签页不同步调试
 
@@ -117,6 +146,7 @@
 - `stuStudy.js` 里真正累计进度的是 `totalStudyTime / totalTimeFinish / playTimes`
 - 它依赖 `startTotalTimer()` 内的定时器周期累加
 - 后台标签页时，这类定时器容易被浏览器拖慢或冻结
+- 更关键的是：`totalStudyTime` 不是简单等于 `video.currentTime`，它是**累计学习时长**；真正该对齐的是“播放器实际前进了多少秒”与“页面累计字段实际增长了多少秒”的**增量差**
 
 当前脚本新增的 debug 抓手：
 
@@ -134,9 +164,28 @@
    - 页面累计字段是否同步增长
    - 后台回来后哪些值没有变化
 
-这样做的原因是：不再碰页面核心计时方法本身，避免再次破坏原始 `this` / 定时器语义。
+在把根因钉死后，这一轮追加了一个只在脚本侧生效的补偿层：
 
-这轮目标不是直接“猜一个修复”，而是先把**不同步的根本原因**钉死。
+1. 每次 `runtimeTick` 记录：
+   - 当前 `video.currentTime`
+   - 当前 `vm.totalStudyTime`
+   - 上一次观测时这两个值分别是多少
+2. 如果发现“真实播放增量”明显大于“页面累计增量”，就只补这段差值：
+   - `totalStudyTime += lagDelta`
+   - `totalTimeFinish += lagDelta`
+   - `playTimes += lagDelta`
+   - 同步补 `watchPointPost`
+3. 补偿后立即重跑页面原生 `computeProgree()`
+4. 如果视频已经自然播完，则再做一次**最终完成态刷新**：
+   - 用真实播放百分比刷新当前节的 `percentage`
+   - 必要时直接把 `isStudiedLesson` 提升为完成
+   - 触发一次最终 `saveDdsjkTimeInWhileFn(...)`
+
+这样做的原因是：
+
+- 不去改页面核心 `startTotalTimer()` / `clearTimer()` 本身，避免再次破坏原始 `this` / 定时器语义
+- 不再把“后台不同步”误判成“必须无限重播”
+- 修复点直接对准根因：**浏览器节流掉的是定时器累计，不是播放器真实播放**
 
 额外说明：
 
@@ -179,6 +228,8 @@
 - 页面面板不再显示 `DEBUG`
 - 页面面板只保留中文、用户可读的操作提示
 - 页面日志里的 URL 会被压成短摘要，不再把原始 payload 整段摊给用户
+- 已移除页面侧“已绕过异常脚本检测”提示
+- 页面侧已隐藏前后台切换快照这类调试 spam 提示
 
 ### 6.1 状态栏进度
 
@@ -198,10 +249,11 @@
 已参考 `runtime/zhihuishu-old-v2.js`，把核心反反调试能力并入当前脚本，且做成可开关：
 
 - `Function` 代理：移除动态构造代码里的 `debugger`
+- `Function.prototype.constructor` 数据属性回指代理后的 `Function`，补上 `fn.constructor("debugger")` 这类调用链
 - `eval` 代理：移除动态执行代码里的 `debugger`
 - `setTimeout` / `setInterval` 代理：移除字符串形式定时器里的 `debugger`
 - 上面这三层“无限 `debugger` 绕过模块”已恢复到**启动期安装**，不再等到学习页运行后才装
-- `keydown` 捕获：只在捕获阶段切断页面对以下快捷键的监听传播，**不调用 `preventDefault`**，保留浏览器默认行为
+- 通过包装页面的 `addEventListener/removeEventListener` 与常见 `onkeydown/onkeypress/onkeyup` 赋值，直接让页面收不到以下快捷键，而不是由脚本自己吞掉事件
   - `F12`
   - `Ctrl+Shift+I`
   - `Ctrl+Shift+J`
@@ -212,7 +264,7 @@
 
 - 这层能力的目标是“反反调试”，不是单纯屏蔽页面跳转。
 - 这里修正了一个方向性错误：用户要的是**绕过页面对 F12/DevTools 的拦截**，不是由脚本自己去拦截浏览器默认 F12。
-- 同时保留了上一轮确认过的安全边界：不再改写 `Function.prototype.constructor`，避免为绕过 `debugger` 再次把页面初始化链打坏。
+- 本轮恢复了 `Function.prototype.constructor`，但不是旧版那种 getter 劫持，而是更保守的**数据属性回指代理函数**，只补齐 `constructor -> Function` 这条缺口。
 - 所以本轮没有把旧脚本里的 `window.open / location / beforeunload` 全量搬进来，只落了与 DevTools/F12 最直接相关的部分。
 - 菜单中新增了 `反反调试/F12` 开关。
 
@@ -223,26 +275,27 @@
 本轮落地的修复点：
 
 - 保留 `document-start` 的轻量能力：
-  - `keydown` DevTools/F12 快捷键拦截
+  - 页面键盘监听包装，用来绕过 DevTools/F12 热键拦截
   - `fetch / XHR / sendBeacon` 请求接管
-- 把重型反调试能力延后到**已经拿到学习页 Vue 实例**之后再安装，而不是在 `DOMContentLoaded` 阶段直接全局改写。
-- 删除对 `Function.prototype.constructor` 的改写。
+- 把真正的 `debugger` 清洗链保留在启动期安装，避免页面在首屏阶段就缓存到原始 `Function`
+- 把 `Function.prototype.constructor` 改成**数据属性回指代理**，不再使用高风险 getter 劫持
 
 后续又根据用户反馈再次调整为：
 
 - **无限 `debugger` 绕过模块恢复到启动期安装**
-- 但仍然**不恢复** `Function.prototype.constructor` 的全局 getter 改写
+- 恢复 `Function.prototype.constructor`，但仍然**不恢复**旧版全局 getter 改写
 
 这样改的原因：
 
 - 学习页源码里有大量依赖 `constructor` / `Function("return this")()` / 各类构造器判断的初始化逻辑。
-- 之前那层 `Function.prototype.constructor` getter 会把**页面里所有函数对象**的 `constructor` 都改成代理对象，风险面太大。
-- 这类全局原型改写即使不是语法错误，也很容易让页面初始化链表现成“白屏 / 卡加载 / 不继续渲染”。
+- 之前那层 `Function.prototype.constructor` getter 劫持会把**页面里所有函数对象**都变成访问器路径，风险面太大。
+- 这类访问器式全局原型改写即使不是语法错误，也很容易让页面初始化链表现成“白屏 / 卡加载 / 不继续渲染”。
+- 这次改成普通 `value: FunctionProxy` 后，侵入面比 getter 小，但仍然能覆盖用户实际反馈的 `(function anonymous(){ debugger })` 这类动态构造路径。
 
 为了便于继续定位，本轮还顺手做了两处收敛：
 
 - `runtimeTick` 在 `document.readyState === "loading"` 时直接跳过，避免加载期反复扫 DOM。
-- `stripDebuggerStatements` 的日志做了节流，避免动态代码较多时在启动期刷爆控制台。
+- `stripDebuggerStatements` 仍保留代码清洗能力，但不再输出页面侧刷屏提示。
 
 ### 7.2 `cheat` 请求来源与源头规避
 
@@ -282,14 +335,26 @@ node --check C:\Users\Nanboom233\Desktop\Code\ob-jsjiami\codebase-v2\runtime\tes
 
 ### 运行
 
-本轮最终保留主脚本与总结文档；测试脚本已按最后指令清理。
+本轮保留并持续使用以下三个文件：
 
-清理前已执行过两层烟测：
+- `auto-wisdom-tree.js`
+- `test-auto-wisdom-tree.js`
+- `auto-wisdom-tree-summary.md`
 
-1. 校验 userscript 自身是否包含关键拦截面、关键函数、关键 URL
-2. 直接校验 `codebase-v2/v2-source` 混淆产物是否仍保留脚本依赖的方法名和接口字符串
+测试脚本当前覆盖：
 
-当前可执行校验命令：
+1. userscript 关键元数据、拦截面、反反调试安装点
+2. 续播链、进度同步链、页面日志裁剪逻辑
+   - 当前视频完成后，从整个列表自上而下找第一个未完成视频
+3. 平时测试能力：
+   - 自动打开平时测试开关
+   - 中途打开脚本也能直接恢复自动答题
+   - 每题固定延迟 5 秒
+   - 仅自动进入下一题、不自动交卷
+   - 页面侧隐藏异常检测与快照 spam 提示
+4. `codebase-v2/v2-source` 混淆产物兼容性字符串校验
+
+本轮实际执行命令如下：
 
 ```powershell
 node --check C:\Users\Nanboom233\Desktop\Code\ob-jsjiami\codebase-v2\runtime\auto-wisdom-tree.js
@@ -306,4 +371,4 @@ node C:\Users\Nanboom233\Desktop\Code\ob-jsjiami\codebase-v2\runtime\test-auto-w
 
 - `queryUserRecruitIdLastVideoId` 已确认是续播定位链，不在默认拦截名单内。
 - 本轮所有新增文件都只写在 `codebase-v2/runtime`。
-- `test-auto-wisdom-tree.js` 当前用于烟测、混淆产物兼容性校验、反反调试能力校验。
+- `test-auto-wisdom-tree.js` 当前用于烟测、混淆产物兼容性校验、反反调试能力校验，以及平时测试链路回归校验。

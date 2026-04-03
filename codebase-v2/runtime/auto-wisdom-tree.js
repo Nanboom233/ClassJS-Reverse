@@ -1,9 +1,12 @@
 // ==UserScript==
-// @name         2026 智慧树自动浇水收肥料 - Enhanced
+// @name         2026 智慧树自动浇水施肥开花结果 - Enhanced
 // @namespace    auto-wisdom-tree
-// @version      0.1.0
-// @description  自动答题、屏蔽异常上报与异常检测、自动续播共享课视频
+// @version      0.1.5
+// @description  智慧树是一棵树
 // @match        *://studyvideoh5.zhihuishu.com/*
+// @match        *://onlineexamh5new.zhihuishu.com/*
+// @match        *://studentexambaseh5.zhihuishu.com/*
+// @match        *://exam.zhihuishu.com/*
 // @run-at       document-start
 // @noframes
 // @grant        unsafeWindow
@@ -25,10 +28,19 @@
   const SCRIPT_TAG = "[auto-wisdom-tree]";
   const PageResponse = PAGE.Response || Response;
   const PageEvent = PAGE.Event || Event;
+  const PAGE_HOST = String(PAGE.location?.host || location.host || "").toLowerCase();
+  const ANSWER_INTERVAL_MS = 5000;
+  const STUDY_HOST_RE = /(^|\.)studyvideoh5\.zhihuishu\.com$/i;
+  const EXAM_HOST_RE_LIST = [
+    /(^|\.)onlineexamh5new\.zhihuishu\.com$/i,
+    /(^|\.)studentexambaseh5\.zhihuishu\.com$/i,
+    /(^|\.)exam\.zhihuishu\.com$/i,
+  ];
 
   const state = {
     config: {
       autoQuiz: true,
+      autoOpenRegularExam: true,
       blockReportApis: true,
       blockDetectApis: true,
       antiAntiDebug: true,
@@ -44,9 +56,13 @@
     uiLogs: [],
     uiRestoreStyle: null,
     studyVm: null,
+    currentVideoId: null,
+    currentVideoChangedAt: 0,
     lastVideoId: null,
     lastAdvanceTargetId: null,
     lastAdvanceAt: 0,
+    advanceCooldownUntil: 0,
+    lastReplayVideoId: null,
     lastReplayAt: 0,
     lastToastAt: 0,
     runtimeTimerId: 0,
@@ -56,7 +72,12 @@
       installed: false,
       hotkeysInstalled: false,
       strippedCount: 0,
-      lastStripLogAt: 0,
+    },
+    progressSync: {
+      videoId: null,
+      currentTime: 0,
+      totalStudyTime: 0,
+      observedAt: 0,
     },
     progressDebug: {
       hooksInstalled: false,
@@ -64,13 +85,29 @@
       lastTickLoggedAt: 0,
       lastSnapshot: null,
     },
+    answerFlow: {
+      lastPopupAnswerAt: 0,
+    },
+    exam: {
+      answerBank: {},
+      session: null,
+      recoveredThisPage: false,
+      lastSignature: "",
+      lastAnsweredAt: 0,
+      lastAdvancedAt: 0,
+      lastLaunchKey: "",
+      lastLaunchAt: 0,
+    },
   };
 
   const STORAGE_KEYS = {
     autoQuiz: "awt:autoQuiz",
+    autoOpenRegularExam: "awt:autoOpenRegularExam",
     blockReportApis: "awt:blockReportApis",
     blockDetectApis: "awt:blockDetectApis",
     antiAntiDebug: "awt:antiAntiDebug",
+    examAnswerBank: "awt:examAnswerBank",
+    examSession: "awt:examSession",
   };
 
   const REPORT_RULES = [
@@ -221,6 +258,7 @@
   function getConfigSummary() {
     return [
       `自动答题:${state.config.autoQuiz ? "开" : "关"}`,
+      `自动开测:${state.config.autoOpenRegularExam ? "开" : "关"}`,
       `上报拦截:${state.config.blockReportApis ? "开" : "关"}`,
       `检测拦截:${state.config.blockDetectApis ? "开" : "关"}`,
       `反反调试:${state.config.antiAntiDebug ? "开" : "关"}`,
@@ -229,6 +267,168 @@
 
   function now() {
     return Date.now();
+  }
+
+  function isStudyPage() {
+    return STUDY_HOST_RE.test(PAGE_HOST);
+  }
+
+  function isExamPage() {
+    return EXAM_HOST_RE_LIST.some((rule) => rule.test(PAGE_HOST));
+  }
+
+  function normalizeText(value) {
+    return String(value || "")
+      .replace(/\u00a0/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function normalizeQuestionText(value) {
+    return normalizeText(value)
+      .replace(/^[\d一二三四五六七八九十]+[\s.、:：）)]*/, "")
+      .replace(/^第[\d一二三四五六七八九十]+题[\s:：.]*/, "")
+      .trim();
+  }
+
+  function normalizeAnswerText(value) {
+    return normalizeText(value)
+      .replace(/^[A-H][\s.、:：-]+/i, "")
+      .trim();
+  }
+
+  function getLetterByIndex(index) {
+    return String.fromCharCode(65 + index);
+  }
+
+  function isElementVisible(element) {
+    if (!element || typeof element.getBoundingClientRect !== "function") return false;
+    const rect = element.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return false;
+    const style = PAGE.getComputedStyle ? PAGE.getComputedStyle(element) : null;
+    if (!style) return true;
+    return style.display !== "none" && style.visibility !== "hidden" && style.opacity !== "0";
+  }
+
+  function queryAllBySelectors(selectors, root = document) {
+    const results = [];
+    const seen = new Set();
+    for (const selector of selectors) {
+      if (!selector) continue;
+      let nodes = [];
+      try {
+        nodes = root.querySelectorAll(selector);
+      } catch (error) {
+        logWarn("exam", `selector query failed: ${selector}`, error);
+        continue;
+      }
+      for (const node of nodes) {
+        if (seen.has(node)) continue;
+        seen.add(node);
+        results.push(node);
+      }
+    }
+    return results;
+  }
+
+  function queryFirstBySelectors(selectors, root = document, visibleOnly = false) {
+    const nodes = queryAllBySelectors(selectors, root);
+    if (!visibleOnly) return nodes[0] || null;
+    return nodes.find((node) => isElementVisible(node)) || null;
+  }
+
+  function queryFirstMatchingSet(selectors, root = document) {
+    for (const selector of selectors) {
+      const nodes = queryAllBySelectors([selector], root).filter((node) => isElementVisible(node) && normalizeText(node.innerText || node.textContent));
+      if (nodes.length) return nodes;
+    }
+    return [];
+  }
+
+  function getNodeText(node) {
+    return normalizeText(node?.innerText || node?.textContent || "");
+  }
+
+  function isActionableElementDisabled(element) {
+    if (!element) return true;
+    if ("disabled" in element && element.disabled) return true;
+    const ariaDisabled = String(element.getAttribute?.("aria-disabled") || "").toLowerCase();
+    return ariaDisabled === "true";
+  }
+
+  function clickElement(element) {
+    if (!element || isActionableElementDisabled(element)) return false;
+    safeCall(() => {
+      element.scrollIntoView?.({
+        block: "center",
+        inline: "center",
+      });
+    });
+    safeCall(() => element.click());
+    return true;
+  }
+
+  function setNativeInputValue(element, value) {
+    if (!element) return false;
+    const prototype = Object.getPrototypeOf(element);
+    const descriptor = Object.getOwnPropertyDescriptor(prototype, "value");
+    if (descriptor?.set) {
+      descriptor.set.call(element, value);
+    } else {
+      element.value = value;
+    }
+    element.dispatchEvent(new PageEvent("input", {
+      bubbles: true,
+    }));
+    element.dispatchEvent(new PageEvent("change", {
+      bubbles: true,
+    }));
+    return true;
+  }
+
+  function buildExamQuestionSignature(questionText, options = []) {
+    const normalizedQuestion = normalizeQuestionText(questionText);
+    const normalizedOptions = options.map((option) => normalizeAnswerText(option)).filter(Boolean);
+    return [normalizedQuestion, normalizedOptions.join(" | ")].filter(Boolean).join(" || ");
+  }
+
+  function isDelayElapsed(lastAt, timestamp = now(), interval = ANSWER_INTERVAL_MS) {
+    return !lastAt || timestamp - lastAt >= interval;
+  }
+
+  function storeExamAnswer(questionInfo, answers, source = "page") {
+    if (!questionInfo || !Array.isArray(answers) || !answers.length) return false;
+    const signature = questionInfo.signature || buildExamQuestionSignature(questionInfo.text, questionInfo.options?.map((option) => option.text));
+    const normalizedAnswers = [...new Set(answers.map((item) => normalizeAnswerText(item)).filter(Boolean))];
+    if (!signature || !normalizedAnswers.length) return false;
+
+    const questionKey = `q:${normalizeQuestionText(questionInfo.text)}`;
+    const existing = state.exam.answerBank[signature];
+    if (existing && JSON.stringify(existing.answers) === JSON.stringify(normalizedAnswers)) {
+      return false;
+    }
+
+    const record = {
+      question: normalizeQuestionText(questionInfo.text),
+      answers: normalizedAnswers,
+      updatedAt: now(),
+      source,
+    };
+    state.exam.answerBank[signature] = record;
+    if (questionKey && questionKey !== "q:") {
+      state.exam.answerBank[questionKey] = record;
+    }
+    void gmSetValue(STORAGE_KEYS.examAnswerBank, state.exam.answerBank);
+    return true;
+  }
+
+  function lookupExamAnswer(questionInfo) {
+    if (!questionInfo) return [];
+    const signature = questionInfo.signature || buildExamQuestionSignature(questionInfo.text, questionInfo.options?.map((option) => option.text));
+    const questionKey = `q:${normalizeQuestionText(questionInfo.text)}`;
+    const record = state.exam.answerBank[signature] || state.exam.answerBank[questionKey];
+    if (!record || !Array.isArray(record.answers)) return [];
+    return record.answers.map((item) => normalizeAnswerText(item)).filter(Boolean);
   }
 
   function isRuleMatched(url, rules) {
@@ -285,13 +485,6 @@
     const replaced = source.replace(/\bdebugger\b\s*;?/gi, "");
     if (replaced !== source) {
       state.antiDebug.strippedCount += 1;
-      const timestamp = now();
-      if (document.readyState !== "loading" && timestamp - state.antiDebug.lastStripLogAt > 5000) {
-        state.antiDebug.lastStripLogAt = timestamp;
-        logWarn("anti-debug", "stripped debugger statement from dynamic code", {
-          strippedCount: state.antiDebug.strippedCount,
-        });
-      }
     }
     return replaced;
   }
@@ -312,22 +505,118 @@
   }
 
   function installDevtoolsHotkeyGuard() {
-    if (state.antiDebug.hotkeysInstalled) return;
+    if (state.antiDebug.hotkeysInstalled || !state.config.antiAntiDebug) return;
     state.antiDebug.hotkeysInstalled = true;
-    const swallowDevtoolsHotkeys = (event) => {
-      if (!state.config.antiAntiDebug || !isDevtoolsKeyEvent(event)) return;
-      safeCall(() => event.stopImmediatePropagation());
-      safeCall(() => event.stopPropagation());
-      logWarn("anti-debug", "captured devtools hotkey", {
-        key: event.key,
-        code: event.code,
-        keyCode: event.keyCode,
-      });
-    };
+    try {
+      const EventTargetCtor = PAGE.EventTarget || EventTarget;
+      const eventTargetPrototype = EventTargetCtor?.prototype;
+      if (!eventTargetPrototype || eventTargetPrototype.addEventListener?.[WRAP_MARK]) {
+        logSuccess("anti-debug", "page devtools hotkey bypass installed");
+        return;
+      }
 
-    window.addEventListener("keydown", swallowDevtoolsHotkeys, true);
-    document.addEventListener("keydown", swallowDevtoolsHotkeys, true);
-    logSuccess("anti-debug", "devtools hotkey guard installed");
+      const listenerMap = new WeakMap();
+      const originalAddEventListener = eventTargetPrototype.addEventListener;
+      const originalRemoveEventListener = eventTargetPrototype.removeEventListener;
+
+      const wrapListener = (listener) => {
+        if (!listener) return listener;
+        if (listenerMap.has(listener)) {
+          return listenerMap.get(listener);
+        }
+
+        let wrappedListener = listener;
+        if (typeof listener === "function") {
+          wrappedListener = function (event) {
+            if (state.config.antiAntiDebug && isDevtoolsKeyEvent(event)) {
+              return undefined;
+            }
+            return listener.apply(this, arguments);
+          };
+        } else if (typeof listener?.handleEvent === "function") {
+          wrappedListener = {
+            handleEvent(event) {
+              if (state.config.antiAntiDebug && isDevtoolsKeyEvent(event)) {
+                return undefined;
+              }
+              return listener.handleEvent.call(listener, event);
+            },
+          };
+        }
+
+        listenerMap.set(listener, wrappedListener);
+        return wrappedListener;
+      };
+
+      const wrappedAddEventListener = function (type, listener, options) {
+        if (/^key(?:down|press|up)$/i.test(String(type || ""))) {
+          return originalAddEventListener.call(this, type, wrapListener(listener), options);
+        }
+        return originalAddEventListener.call(this, type, listener, options);
+      };
+
+      const wrappedRemoveEventListener = function (type, listener, options) {
+        if (/^key(?:down|press|up)$/i.test(String(type || "")) && listenerMap.has(listener)) {
+          return originalRemoveEventListener.call(this, type, listenerMap.get(listener), options);
+        }
+        return originalRemoveEventListener.call(this, type, listener, options);
+      };
+
+      Object.defineProperty(wrappedAddEventListener, WRAP_MARK, {
+        value: true,
+      });
+      Object.defineProperty(wrappedRemoveEventListener, WRAP_MARK, {
+        value: true,
+      });
+
+      eventTargetPrototype.addEventListener = wrappedAddEventListener;
+      eventTargetPrototype.removeEventListener = wrappedRemoveEventListener;
+
+      const wrapKeyHandlerProperty = (prototype, propertyName) => {
+        if (!prototype) return;
+        const descriptor = Object.getOwnPropertyDescriptor(prototype, propertyName);
+        if (!descriptor || !descriptor.configurable || typeof descriptor.set !== "function") return;
+
+        const assignedHandlers = new WeakMap();
+        Object.defineProperty(prototype, propertyName, {
+          configurable: true,
+          enumerable: descriptor.enumerable,
+          get() {
+            return assignedHandlers.get(this) || (descriptor.get ? descriptor.get.call(this) : null);
+          },
+          set(handler) {
+            if (typeof handler !== "function") {
+              assignedHandlers.delete(this);
+              descriptor.set.call(this, handler);
+              return;
+            }
+
+            const wrappedHandler = function (event) {
+              if (state.config.antiAntiDebug && isDevtoolsKeyEvent(event)) {
+                return undefined;
+              }
+              return handler.apply(this, arguments);
+            };
+
+            assignedHandlers.set(this, wrappedHandler);
+            descriptor.set.call(this, wrappedHandler);
+          },
+        });
+      };
+
+      const WindowCtor = PAGE.Window || window.Window;
+      const DocumentCtor = PAGE.Document || window.Document;
+      const HTMLElementCtor = PAGE.HTMLElement || window.HTMLElement;
+      ["onkeydown", "onkeypress", "onkeyup"].forEach((propertyName) => {
+        wrapKeyHandlerProperty(WindowCtor?.prototype, propertyName);
+        wrapKeyHandlerProperty(DocumentCtor?.prototype, propertyName);
+        wrapKeyHandlerProperty(HTMLElementCtor?.prototype, propertyName);
+      });
+
+      logSuccess("anti-debug", "page devtools hotkey bypass installed");
+    } catch (error) {
+      logError("anti-debug", "page devtools hotkey bypass install failed", error);
+    }
   }
 
   function installAntiDebugGuards() {
@@ -353,6 +642,16 @@
 
       PAGE.Function = FunctionProxy;
       logSuccess("anti-debug", "Function proxy installed");
+
+      const constructorDescriptor = Object.getOwnPropertyDescriptor(OriginalFunction.prototype, "constructor");
+      if (!constructorDescriptor || constructorDescriptor.value !== FunctionProxy) {
+        Object.defineProperty(OriginalFunction.prototype, "constructor", {
+          configurable: true,
+          writable: true,
+          value: FunctionProxy,
+        });
+      }
+      logSuccess("anti-debug", "Function constructor proxy installed");
     } catch (error) {
       logError("anti-debug", "Function proxy install failed", error);
     }
@@ -745,6 +1044,9 @@
 
     if (typeof vm.chapterExamEntry === "function" && !vm.chapterExamEntry[WRAP_MARK]) {
       vm.chapterExamEntry = wrapVmMethod(vm, vm.chapterExamEntry, (original) => function (studentExam, ...rest) {
+        if (state.config.autoQuiz) {
+          armExamSession(buildExamSessionPayload(this, studentExam));
+        }
         if (state.config.blockDetectApis && typeof this.judgeLookAnswer === "function") {
           return this.judgeLookAnswer(studentExam, ...rest);
         }
@@ -754,6 +1056,13 @@
 
     if (typeof vm.goToExamJudge === "function" && !vm.goToExamJudge[WRAP_MARK]) {
       vm.goToExamJudge = wrapVmMethod(vm, vm.goToExamJudge, (original) => function (...args) {
+        if (state.config.autoQuiz) {
+          armExamSession(buildExamSessionPayload(this, {
+            studentExamDto: {
+              examUrl: "",
+            },
+          }));
+        }
         if (state.config.blockDetectApis && typeof this.goToExamListUrl === "function") {
           return this.goToExamListUrl();
         }
@@ -834,6 +1143,133 @@
     }
     state.progressDebug.lastSnapshot = snapshot;
     logDebug("progress", "progress trend snapshot", snapshot);
+  }
+
+  function resetProgressSyncState(currentVideoId, video, vm, timestamp = now()) {
+    state.progressSync.videoId = normalizeVideoId(currentVideoId);
+    state.progressSync.currentTime = Number(video?.currentTime || 0);
+    state.progressSync.totalStudyTime = Number(vm?.totalStudyTime || 0);
+    state.progressSync.observedAt = timestamp;
+  }
+
+  function appendWatchPointRange(vm, startStudyTime, endStudyTime) {
+    const start = Number(startStudyTime || 0);
+    const end = Number(endStudyTime || 0);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return;
+
+    const points = typeof vm?.watchPointPost === "string" && vm.watchPointPost
+      ? vm.watchPointPost.split(",").filter(Boolean)
+      : ["0", "1"];
+    const startIndex = Math.max(2, Math.floor(start / 5) + 2);
+    const endIndex = Math.max(startIndex, Math.floor(end / 5) + 2);
+    for (let index = startIndex; index <= endIndex; index += 1) {
+      const marker = String(index);
+      if (points[points.length - 1] !== marker) {
+        points.push(marker);
+      }
+    }
+    vm.watchPointPost = points.join(",");
+  }
+
+  function getActualPlaybackPercent(vm, video = getPlayableVideo(), lesson = findCurrentLesson(vm)) {
+    const duration = Number(video?.duration || lesson?.videoSec || 0);
+    const currentTime = Number(video?.currentTime || 0);
+    if (!Number.isFinite(duration) || duration <= 0 || !Number.isFinite(currentTime) || currentTime <= 0) {
+      return clampPercent(lesson?.percentage || 0);
+    }
+    return clampPercent((currentTime / duration) * 100);
+  }
+
+  function syncProgressFromPlayback(vm, reason = "runtimeTick", timestamp = now()) {
+    const video = getPlayableVideo();
+    const currentVideoId = resolveCurrentVideoId(vm);
+    if (!video || !currentVideoId) return false;
+
+    const currentTime = Number(video.currentTime || 0);
+    const totalStudyTime = Number(vm.totalStudyTime || 0);
+    if (!Number.isFinite(currentTime) || !Number.isFinite(totalStudyTime)) {
+      resetProgressSyncState(currentVideoId, video, vm, timestamp);
+      return false;
+    }
+
+    if (state.progressSync.videoId !== currentVideoId || !state.progressSync.observedAt) {
+      resetProgressSyncState(currentVideoId, video, vm, timestamp);
+      return false;
+    }
+
+    const elapsedSeconds = Math.max(0, (timestamp - state.progressSync.observedAt) / 1000);
+    const playbackDelta = currentTime - state.progressSync.currentTime;
+    const recordedDelta = totalStudyTime - state.progressSync.totalStudyTime;
+    const playbackRate = Number(video.playbackRate || vm.playRate || 1) || 1;
+    const naturalFinish = isVideoNaturallyFinished(video);
+
+    if (playbackDelta < -3) {
+      resetProgressSyncState(currentVideoId, video, vm, timestamp);
+      return false;
+    }
+
+    const seekThreshold = Math.max(12, elapsedSeconds * Math.max(playbackRate, 1) * 2 + 6);
+    if (playbackDelta > seekThreshold) {
+      logDebug("progress", "progress sync baseline reset after playback jump", {
+        reason,
+        videoId: currentVideoId,
+        playbackDelta: Number(playbackDelta.toFixed(2)),
+        elapsedSeconds: Number(elapsedSeconds.toFixed(2)),
+      });
+      resetProgressSyncState(currentVideoId, video, vm, timestamp);
+      return false;
+    }
+
+    let changed = false;
+    const lagDelta = playbackDelta - Math.max(0, recordedDelta);
+    const minLag = naturalFinish ? 0.5 : document.hidden ? 2 : 5;
+    if (lagDelta >= minLag) {
+      const previousTotalStudyTime = Number(vm.totalStudyTime || 0);
+      vm.totalStudyTime = previousTotalStudyTime + lagDelta;
+      vm.totalTimeFinish = Number(vm.totalTimeFinish || 0) + lagDelta;
+      vm.playTimes = Number(vm.playTimes || 0) + lagDelta;
+      appendWatchPointRange(vm, previousTotalStudyTime, vm.totalStudyTime);
+      if (typeof vm.computeProgree === "function") {
+        safeCall(() => vm.computeProgree());
+      }
+      changed = true;
+      logWarn("progress", "compensated throttled progress lag", {
+        reason,
+        videoId: currentVideoId,
+        hidden: document.hidden,
+        playbackDelta: Number(playbackDelta.toFixed(2)),
+        recordedDelta: Number(Math.max(0, recordedDelta).toFixed(2)),
+        compensatedDelta: Number(lagDelta.toFixed(2)),
+      });
+    }
+
+    if (naturalFinish) {
+      const currentLesson = findCurrentLesson(vm);
+      const actualPercent = getActualPlaybackPercent(vm, video, currentLesson);
+      if (currentLesson && actualPercent > Number(currentLesson.percentage || 0)) {
+        currentLesson.percentage = actualPercent;
+        changed = true;
+      }
+      if (currentLesson && actualPercent >= 50 && Number(currentLesson.isStudiedLesson || 0) !== 1) {
+        currentLesson.isStudiedLesson = 1;
+        vm.playTimes = Math.max(Number(vm.playTimes || 0), 6);
+        if (typeof vm.computeProgree === "function") {
+          safeCall(() => vm.computeProgree());
+        }
+        if (typeof vm.saveDdsjkTimeInWhileFn === "function" && !vm.isSaving) {
+          safeCall(() => vm.saveDdsjkTimeInWhileFn(null, null, null, 8));
+        }
+        changed = true;
+        logWarn("progress", "forced final progress flush at natural end", {
+          videoId: currentVideoId,
+          actualPercent: Number(actualPercent.toFixed(2)),
+          playTimes: Number(vm.playTimes || 0),
+        });
+      }
+    }
+
+    resetProgressSyncState(currentVideoId, video, vm, timestamp);
+    return changed;
   }
 
   function installProgressDebugHooks() {
@@ -957,6 +1393,18 @@
     const questions = vm.topicInfo?.lessonTestQuestionUseInterfaceDtos;
     if (!Array.isArray(questions) || !questions.length) return false;
 
+    if (questions.every((question) => question && question.isCheck) && typeof vm.closeTest === "function") {
+      logSuccess("answer", "dialog completed, scheduling close");
+      setTimeout(() => {
+        safeCall(() => vm.closeTest({ isTrusted: true }));
+      }, 120);
+      return false;
+    }
+
+    if (!isDelayElapsed(state.answerFlow.lastPopupAnswerAt)) {
+      return false;
+    }
+
     let answeredAny = false;
 
     for (const item of questions) {
@@ -980,11 +1428,13 @@
       }
 
       safeCall(() => vm.topicClickQot(correctOptions[0], 2));
+      state.answerFlow.lastPopupAnswerAt = now();
       logSuccess(
         "answer",
         `question auto-submitted: ${item?.testQuestion?.questionId || "unknown"} (${correctOptions.length} correct option(s))`,
       );
       answeredAny = true;
+      break;
     }
 
     if (questions.every((question) => question && question.isCheck) && typeof vm.closeTest === "function") {
@@ -995,6 +1445,453 @@
     }
 
     return answeredAny;
+  }
+
+  function buildExamSessionPayload(vm, lessonLike) {
+    const studentExamDto = lessonLike?.studentExamDto || lessonLike || {};
+    return {
+      host: PAGE_HOST,
+      recruitId: normalizeVideoId(vm?.recruitId),
+      lessonId: normalizeVideoId(vm?.lessonId || lessonLike?.id),
+      studentExamId: normalizeVideoId(studentExamDto?.id),
+      examId: normalizeVideoId(studentExamDto?.exam?.id),
+      examUrl: studentExamDto?.examUrl || "",
+      armedAt: now(),
+    };
+  }
+
+  function armExamSession(sessionPayload) {
+    if (!sessionPayload || typeof sessionPayload !== "object") return;
+    state.exam.session = {
+      ...(state.exam.session && typeof state.exam.session === "object" ? state.exam.session : {}),
+      ...sessionPayload,
+      armedAt: now(),
+    };
+    void gmSetValue(STORAGE_KEYS.examSession, state.exam.session);
+  }
+
+  function isStudentExamPending(studentExamDto) {
+    if (!studentExamDto || typeof studentExamDto !== "object") return false;
+    const examState = Number(studentExamDto.state);
+    return examState !== 3 && examState !== 4;
+  }
+
+  function extractQuestionTextFromRoot(root) {
+    const candidates = queryFirstMatchingSet([
+      ".questionName .centent-pre",
+      ".questionName .preStyle",
+      ".questionName",
+      ".examPaper_subject .subject_describe div",
+      ".examPaper_subject .subject_describe p",
+      ".subject_describe div",
+      ".subject_describe p",
+      ".smallStem_describe p",
+      ".smallStem_describe",
+      ".question-title",
+      ".quest-title",
+      ".que-title",
+      ".title-box",
+      ".topic-title",
+    ], root).map((node) => normalizeQuestionText(getNodeText(node))).filter(Boolean);
+
+    if (candidates.length) {
+      return candidates.sort((left, right) => right.length - left.length)[0];
+    }
+    return normalizeQuestionText(getNodeText(root));
+  }
+
+  function readExamOptions(root) {
+    const optionNodes = queryFirstMatchingSet([
+      ".radio-view li",
+      ".checkbox-view li",
+      ".checkbox-views label",
+      ".checkbox-views li",
+      ".subject_node .nodeLab",
+      ".option-list li",
+      ".answer-list li",
+      ".question-option li",
+      ".options li",
+    ], root);
+
+    return optionNodes.map((node, index) => {
+      const labelNode = queryFirstBySelectors([
+        ".letterSortNum",
+        ".sort",
+        ".prefix",
+        ".option-prefix",
+        ".nodeLab-sort",
+        ".option-index",
+      ], node);
+      const label = normalizeText(getNodeText(labelNode) || getLetterByIndex(index)).toUpperCase().slice(0, 1) || getLetterByIndex(index);
+      const rawText = getNodeText(node);
+      const text = normalizeAnswerText(rawText) || rawText || label;
+      const hint = [
+        String(node.className || ""),
+        String(node.getAttribute?.("class") || ""),
+        String(node.getAttribute?.("data-state") || ""),
+        String(node.getAttribute?.("data-result") || ""),
+        String(node.getAttribute?.("aria-checked") || ""),
+        String(node.getAttribute?.("aria-current") || ""),
+      ].join(" ");
+
+      return {
+        element: node,
+        label,
+        text,
+        normalizedText: normalizeAnswerText(text) || label,
+        selected: /(^|[^a-z])(checked|selected|active|choose|cur|on)([^a-z]|$)/i.test(hint) || String(node.getAttribute?.("aria-checked") || "").toLowerCase() === "true",
+        correct: /(^|[^a-z])(correct|right|success|standard|answer)([^a-z]|$)/i.test(hint) || String(node.getAttribute?.("data-result") || "") === "1",
+      };
+    });
+  }
+
+  function extractAnswerTokensFromText(text, options) {
+    const normalized = normalizeText(text);
+    if (!normalized) return [];
+
+    const letterMatch = normalized.match(/正确答案[\s:：]*([A-H](?:[\s,，、/]+[A-H])*)/i);
+    if (letterMatch) {
+      const letters = [...new Set((letterMatch[1].match(/[A-H]/gi) || []).map((item) => item.toUpperCase()))];
+      const answers = options
+        .filter((option) => letters.includes(option.label))
+        .map((option) => option.text);
+      if (answers.length) return answers;
+    }
+
+    if (/正确答案|参考答案|答案解析/i.test(normalized)) {
+      const answers = options
+        .filter((option) => option.normalizedText && normalized.includes(option.normalizedText))
+        .map((option) => option.text);
+      if (answers.length) return [...new Set(answers)];
+    }
+
+    return [];
+  }
+
+  function extractExplicitAnswers(root, options) {
+    const directMatches = options.filter((option) => option.correct).map((option) => option.text);
+    if (directMatches.length) return [...new Set(directMatches)];
+
+    const answerNodes = queryAllBySelectors([
+      ".answer",
+      ".correct-answer",
+      ".right-answer",
+      ".analysis",
+      ".answer-analysis",
+      ".exam_analysis",
+      ".analysis-box",
+      ".analysis-text",
+      ".result-answer",
+    ], root);
+
+    for (const node of answerNodes) {
+      const answers = extractAnswerTokensFromText(getNodeText(node), options);
+      if (answers.length) return answers;
+    }
+
+    return extractAnswerTokensFromText(getNodeText(root), options);
+  }
+
+  function readCurrentExamQuestion() {
+    const root = queryFirstBySelectors([
+      ".ques-detail",
+      ".examPaper_subject",
+      ".question-detail",
+      ".question-box",
+      ".topic-box",
+      ".subject_box",
+      ".exam-topic",
+    ], document, true);
+    if (!root) return null;
+
+    const options = readExamOptions(root);
+    const textInputs = queryAllBySelectors([
+      "textarea",
+      "input[type='text']",
+      "input:not([type])",
+    ], root).filter((element) => isElementVisible(element) && !isActionableElementDisabled(element));
+
+    const questionText = extractQuestionTextFromRoot(root);
+    const signature = buildExamQuestionSignature(questionText, options.map((option) => option.text));
+    const isMulti = options.length > 1 && (
+      root.querySelector("input[type='checkbox']") ||
+      options.some((option) => /checkbox|multi/i.test(String(option.element.className || "")))
+    );
+    const explicitAnswers = extractExplicitAnswers(root, options);
+
+    return {
+      root,
+      text: questionText,
+      signature,
+      options,
+      textInputs,
+      isMulti,
+      explicitAnswers,
+    };
+  }
+
+  function resolveQuestionTargets(questionInfo) {
+    const explicitAnswers = questionInfo.explicitAnswers || [];
+    if (explicitAnswers.length) {
+      storeExamAnswer(questionInfo, explicitAnswers, "page");
+      return {
+        answers: explicitAnswers,
+        source: "page",
+        fallback: false,
+      };
+    }
+
+    const bankAnswers = lookupExamAnswer(questionInfo);
+    if (bankAnswers.length) {
+      return {
+        answers: bankAnswers,
+        source: "bank",
+        fallback: false,
+      };
+    }
+
+    if (questionInfo.options.length) {
+      return {
+        answers: [questionInfo.options[0].text || questionInfo.options[0].label],
+        source: "fallback",
+        fallback: true,
+      };
+    }
+
+    return {
+      answers: [],
+      source: "empty",
+      fallback: false,
+    };
+  }
+
+  function matchTargetOptions(questionInfo, answers) {
+    const normalizedTargets = answers.map((item) => normalizeAnswerText(item) || String(item || "").trim().toUpperCase()).filter(Boolean);
+    return questionInfo.options.filter((option) => (
+      normalizedTargets.includes(option.normalizedText)
+      || normalizedTargets.includes(option.label)
+    ));
+  }
+
+  function fillExamTextInputs(questionInfo) {
+    if (!questionInfo.textInputs.length) return false;
+    let changed = false;
+    for (const input of questionInfo.textInputs) {
+      if (String(input.value || "").trim()) continue;
+      changed = safeCall(() => setNativeInputValue(input, "已完成"), changed) || changed;
+    }
+    return changed;
+  }
+
+  function answerCurrentExamQuestion(questionInfo) {
+    if (!questionInfo || !questionInfo.signature) return false;
+    if (state.exam.lastSignature === questionInfo.signature && !isDelayElapsed(state.exam.lastAnsweredAt, now(), 1200)) {
+      return false;
+    }
+    if (!isDelayElapsed(state.exam.lastAnsweredAt)) {
+      return false;
+    }
+
+    const resolution = resolveQuestionTargets(questionInfo);
+    const targetOptions = matchTargetOptions(questionInfo, resolution.answers);
+    let changed = false;
+
+    if (targetOptions.length) {
+      for (const option of targetOptions) {
+        if (option.selected) continue;
+        changed = clickElement(option.element) || changed;
+      }
+    } else {
+      changed = fillExamTextInputs(questionInfo) || changed;
+    }
+
+    if (!changed) return false;
+
+    state.exam.lastSignature = questionInfo.signature;
+    state.exam.lastAnsweredAt = now();
+    if (resolution.fallback) {
+      logWarn("answer", "regular exam fallback answer used", {
+        question: questionInfo.text,
+      });
+    } else {
+      logSuccess("answer", "regular exam question answered", {
+        question: questionInfo.text,
+        source: resolution.source,
+      });
+    }
+    return true;
+  }
+
+  function findExamActionButton(patterns) {
+    const nodes = queryAllBySelectors([
+      "button",
+      "a",
+      "[role='button']",
+      ".el-button",
+      ".ant-btn",
+      ".next-topic",
+      ".submit",
+      ".btn",
+      "div[class*='btn']",
+      "span[class*='btn']",
+    ]);
+
+    return nodes.find((node) => {
+      if (!isElementVisible(node) || isActionableElementDisabled(node)) return false;
+      const text = getNodeText(node);
+      if (!text || text.length > 24) return false;
+      return patterns.some((pattern) => pattern.test(text));
+    }) || null;
+  }
+
+  function clickExamAction(patterns, message) {
+    const button = findExamActionButton(patterns);
+    if (!button) return false;
+    if (!clickElement(button)) return false;
+    state.exam.lastAdvancedAt = now();
+    if (message) {
+      logSuccess("answer", message, {
+        text: getNodeText(button),
+      });
+    }
+    return true;
+  }
+
+  function tryStartExamFlow() {
+    if (now() - state.exam.lastAdvancedAt < 1500) return false;
+    return clickExamAction([
+      /开始答题/i,
+      /继续答题/i,
+      /进入考试/i,
+      /进入作业/i,
+      /开始测试/i,
+      /去答题/i,
+      /我要作答/i,
+    ], "regular exam start clicked");
+  }
+
+  function tryAdvanceExamFlow() {
+    if (now() - state.exam.lastAdvancedAt < 1200) return false;
+    if (!isDelayElapsed(state.exam.lastAnsweredAt)) return false;
+
+    return clickExamAction([
+      /保存并下一题/i,
+      /^下一题$/i,
+      /下一页/i,
+      /下一步/i,
+    ], "regular exam action clicked");
+  }
+
+  function hasManualSubmitButton() {
+    return Boolean(findExamActionButton([
+      /提交答案/i,
+      /提交试卷/i,
+      /确认交卷/i,
+      /^交卷$/i,
+      /完成答题/i,
+      /保存并提交/i,
+      /^提交$/i,
+    ]));
+  }
+
+  function restoreExamAnsweringMode(questionInfo) {
+    if (state.exam.recoveredThisPage) return false;
+    if (!questionInfo || !questionInfo.signature) return false;
+
+    state.exam.recoveredThisPage = true;
+    armExamSession({
+      ...(state.exam.session && typeof state.exam.session === "object" ? state.exam.session : {}),
+      host: PAGE_HOST,
+      recoverMode: "exam-page-runtime",
+      recoveredAt: now(),
+    });
+    logSuccess("exam", "regular exam runtime recovered", {
+      signature: questionInfo.signature,
+      question: questionInfo.text,
+    });
+    return true;
+  }
+
+  function handleExamPageRuntime() {
+    if (!state.config.autoQuiz) {
+      updateUi("平时测试页待命");
+      return false;
+    }
+
+    if (tryStartExamFlow()) {
+      updateUi("已进入平时测试答题页");
+      return true;
+    }
+
+    const questionInfo = readCurrentExamQuestion();
+    if (!questionInfo || (!questionInfo.options.length && !questionInfo.textInputs.length)) {
+      updateUi("等待平时测试题目加载");
+      return false;
+    }
+
+    if (restoreExamAnsweringMode(questionInfo)) {
+      updateUi("已恢复平时测试自动答题");
+    }
+
+    if (questionInfo.explicitAnswers.length) {
+      storeExamAnswer(questionInfo, questionInfo.explicitAnswers, "page");
+    }
+
+    if (answerCurrentExamQuestion(questionInfo)) {
+      updateUi("平时测试已自动作答");
+      return true;
+    }
+
+    if (tryAdvanceExamFlow()) {
+      updateUi("平时测试已进入下一步");
+      return true;
+    }
+
+    if (hasManualSubmitButton()) {
+      updateUi("已到最后一题，等待手动交卷");
+      return false;
+    }
+
+    updateUi("平时测试运行中");
+    return false;
+  }
+
+  function maybeLaunchCurrentLessonExam(vm) {
+    if (!isStudyPage() || !state.config.autoQuiz || !state.config.autoOpenRegularExam) return false;
+    if (vm.testDialog || vm.imgDialog) return false;
+    if (!isRecordedProgressComplete(vm)) return false;
+
+    const currentLesson = findCurrentLesson(vm);
+    const studentExamDto = currentLesson?.studentExamDto;
+    if (!isStudentExamPending(studentExamDto)) return false;
+
+    const launchKey = [
+      normalizeVideoId(studentExamDto?.id) || "studentExam",
+      normalizeVideoId(studentExamDto?.exam?.id) || normalizeVideoId(vm?.recruitId) || "recruit",
+    ].join(":");
+    if (state.exam.lastLaunchKey === launchKey && now() - state.exam.lastLaunchAt < 120000) {
+      return true;
+    }
+
+    state.exam.lastLaunchKey = launchKey;
+    state.exam.lastLaunchAt = now();
+    armExamSession(buildExamSessionPayload(vm, currentLesson));
+    logSuccess("exam", "launch regular exam", {
+      lessonId: currentLesson?.id,
+      studentExamId: studentExamDto?.id,
+      examUrl: studentExamDto?.examUrl,
+    });
+    toast("当前节存在平时测试，已自动打开");
+
+    if (typeof vm.chapterExamEntry === "function") {
+      safeCall(() => vm.chapterExamEntry(currentLesson));
+      return true;
+    }
+    if (typeof vm.judgeLookAnswer === "function") {
+      safeCall(() => vm.judgeLookAnswer(currentLesson));
+      return true;
+    }
+    return false;
   }
 
   function normalizeVideoId(value) {
@@ -1010,6 +1907,32 @@
 
   function resolveCurrentVideoId(vm) {
     return normalizeVideoId(vm?.lastViewVideoId);
+  }
+
+  function observeCurrentVideo(vm, timestamp = now()) {
+    const currentVideoId = resolveCurrentVideoId(vm);
+    if (!currentVideoId) return null;
+
+    if (state.currentVideoId !== currentVideoId) {
+      const previousVideoId = state.currentVideoId;
+      state.currentVideoId = currentVideoId;
+      state.currentVideoChangedAt = timestamp;
+      state.lastReplayVideoId = null;
+      state.lastReplayAt = 0;
+      state.progressSync.videoId = currentVideoId;
+      state.progressSync.currentTime = 0;
+      state.progressSync.totalStudyTime = Number(vm?.totalStudyTime || 0);
+      state.progressSync.observedAt = 0;
+      if (state.lastAdvanceTargetId === currentVideoId) {
+        state.lastAdvanceTargetId = null;
+      }
+      logDebug("player", "observed current video change", {
+        previousVideoId,
+        currentVideoId,
+      });
+    }
+
+    return currentVideoId;
   }
 
   function findCurrentLesson(vm) {
@@ -1076,6 +1999,21 @@
     return entries;
   }
 
+  function findFirstPendingVideoEntry(vm, excludeVideoId = null) {
+    const entries = collectVideoEntries(vm);
+    if (!entries.length) return null;
+
+    const excludedId = normalizeVideoId(excludeVideoId);
+    for (let index = 0; index < entries.length; index += 1) {
+      const entry = entries[index];
+      if (excludedId && entry.videoId === excludedId) continue;
+      if (isLessonPendingForAdvance(entry.progressTarget)) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
   function isLessonPendingForAdvance(lesson) {
     if (!lesson) return false;
     const studied = Number(lesson.isStudiedLesson || 0);
@@ -1084,19 +2022,7 @@
   }
 
   function findNextPendingVideoEntry(vm, currentVideoId = resolveCurrentVideoId(vm)) {
-    const entries = collectVideoEntries(vm);
-    if (!entries.length) return null;
-    if (!currentVideoId) return null;
-
-    const currentIndex = entries.findIndex((entry) => entry.videoId === currentVideoId);
-    if (currentIndex < 0) return null;
-    const startIndex = currentIndex >= 0 ? currentIndex + 1 : 0;
-    for (let index = startIndex; index < entries.length; index += 1) {
-      if (isLessonPendingForAdvance(entries[index].progressTarget)) {
-        return entries[index];
-      }
-    }
-    return null;
+    return findFirstPendingVideoEntry(vm, currentVideoId);
   }
 
   function jumpToVideoEntry(vm, entry) {
@@ -1139,15 +2065,42 @@
     return duration - currentTime <= 1;
   }
 
-  function retryCurrentVideoIfNeeded(vm) {
+  function shouldDelayReplay(currentVideoId, timestamp = now()) {
+    const videoId = normalizeVideoId(currentVideoId);
+    if (!videoId) return false;
+    if (state.advanceCooldownUntil && timestamp < state.advanceCooldownUntil) {
+      return true;
+    }
+    if (
+      state.currentVideoId === videoId
+      && state.currentVideoChangedAt
+      && timestamp - state.currentVideoChangedAt < 3000
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  function markAdvanceAttempt(currentVideoId, targetVideoId, cooldownMs = 4000, timestamp = now()) {
+    state.lastVideoId = normalizeVideoId(currentVideoId);
+    state.lastAdvanceTargetId = normalizeVideoId(targetVideoId);
+    state.lastAdvanceAt = timestamp;
+    state.advanceCooldownUntil = timestamp + cooldownMs;
+    state.lastReplayVideoId = null;
+    state.lastReplayAt = 0;
+  }
+
+  function retryCurrentVideoIfNeeded(vm, currentVideoId = resolveCurrentVideoId(vm)) {
     const video = getPlayableVideo();
+    if (!currentVideoId || shouldDelayReplay(currentVideoId)) return false;
     if (!isVideoNaturallyFinished(video)) return false;
     if (isRecordedProgressComplete(vm)) return false;
-    if (now() - state.lastReplayAt < 3000) return true;
+    if (state.lastReplayVideoId === currentVideoId && now() - state.lastReplayAt < 3000) return true;
 
+    state.lastReplayVideoId = currentVideoId;
     state.lastReplayAt = now();
     logWarn("player", "video ended but recorded progress is incomplete, retry from start", {
-      videoId: vm.lastViewVideoId,
+      videoId: currentVideoId,
       lesson: findCurrentLesson(vm)?.name || "unknown",
     });
     safeCall(() => {
@@ -1160,7 +2113,7 @@
       }
       const playResult = video.play();
       if (playResult && typeof playResult.catch === "function") {
-        playResult.catch(() => {});
+        playResult.catch(() => { });
       }
     });
     toast("检测到记录进度未完成，已回到开头重试");
@@ -1183,8 +2136,7 @@
       && now() - state.lastAdvanceAt < 8000;
   }
 
-  function jumpToNextPendingVideo(vm, reason) {
-    const currentVideoId = resolveCurrentVideoId(vm);
+  function jumpToNextPendingVideo(vm, reason, currentVideoId = resolveCurrentVideoId(vm)) {
     const nextPendingEntry = findNextPendingVideoEntry(vm, currentVideoId);
     if (!nextPendingEntry) return false;
     if (hasRecentAdvanceAttempt(currentVideoId, nextPendingEntry.videoId)) {
@@ -1194,33 +2146,29 @@
       return false;
     }
 
-    state.lastVideoId = currentVideoId;
-    state.lastAdvanceTargetId = nextPendingEntry.videoId;
-    state.lastAdvanceAt = now();
-    logSuccess("player", "jump to next unfinished video", {
+    markAdvanceAttempt(currentVideoId, nextPendingEntry.videoId, 4500);
+    logSuccess("player", "jump to first unfinished video", {
       fromVideoId: currentVideoId,
       toVideoId: nextPendingEntry.videoId,
       reason,
     });
-    toast("当前视频已完成，已跳到下一个未完成视频");
-    updateUi("已跳到下一个未完成视频");
+    toast("当前视频已完成，已跳到列表中第一个未完成视频");
+    updateUi("已跳到列表中第一个未完成视频");
     return true;
   }
 
   function advanceVideo(vm) {
+    const currentVideoId = observeCurrentVideo(vm);
     if (vm.testDialog || vm.imgDialog) return;
-    if (retryCurrentVideoIfNeeded(vm)) return;
-    if (isRecordedProgressComplete(vm) && jumpToNextPendingVideo(vm, "recorded progress completed")) return;
+    if (retryCurrentVideoIfNeeded(vm, currentVideoId)) return;
+    if (isRecordedProgressComplete(vm) && jumpToNextPendingVideo(vm, "recorded progress completed", currentVideoId)) return;
     if (!shouldAdvance(vm)) return;
 
-    const currentVideoId = resolveCurrentVideoId(vm);
     if (state.lastVideoId === currentVideoId && !state.lastAdvanceTargetId && now() - state.lastAdvanceAt < 3000) {
       return;
     }
 
-    state.lastVideoId = currentVideoId;
-    state.lastAdvanceTargetId = null;
-    state.lastAdvanceAt = now();
+    markAdvanceAttempt(currentVideoId, null, 3000);
     logSuccess("player", "advance to next video", {
       videoId: currentVideoId,
       reason: "recorded progress completed",
@@ -1299,14 +2247,14 @@
     if (scope === "player" && /video ended but recorded progress is incomplete, retry from start/i.test(message)) {
       return "视频已播完，但记录进度未满，正在回到开头重播";
     }
-    if (scope === "player" && /jump to next unfinished video/i.test(message)) {
-      return "当前视频已完成，已跳到下一个未完成视频";
+    if (scope === "player" && /jump to first unfinished video/i.test(message)) {
+      return "当前视频已完成，已跳到列表中第一个未完成视频";
     }
     if (scope === "player" && /advance to next video/i.test(message)) {
       return "当前视频已完成，已切换到下一节";
     }
     if (scope === "detect" && /notTrustScript blocked/i.test(message)) {
-      return "已绕过异常脚本检测";
+      return null;
     }
     if (scope === "detect" && /collectLog blocked/i.test(message)) {
       return "已拦截异常日志上报";
@@ -1328,6 +2276,24 @@
     if (scope === "network" && /fetchLogData blocked/i.test(message)) {
       return `已拦截日志请求（${summarizeBlockedKind(message)}）`;
     }
+    if (scope === "exam" && /launch regular exam/i.test(message)) {
+      return "当前节存在平时测试，已自动打开";
+    }
+    if (scope === "exam" && /regular exam runtime recovered/i.test(message)) {
+      return "已恢复平时测试自动答题";
+    }
+    if (scope === "answer" && /regular exam question answered/i.test(message)) {
+      return "已自动作答平时测试当前题目";
+    }
+    if (scope === "answer" && /regular exam fallback answer used/i.test(message)) {
+      return "平时测试当前题缺少现成答案，已按兜底方案作答";
+    }
+    if (scope === "answer" && /regular exam start clicked/i.test(message)) {
+      return "已进入平时测试答题页";
+    }
+    if (scope === "answer" && /regular exam action clicked/i.test(message)) {
+      return "平时测试已自动进入下一步";
+    }
     if (scope === "config" && /toggled /i.test(message)) {
       return "脚本配置已更新";
     }
@@ -1338,16 +2304,16 @@
       return "学习页已接管";
     }
     if (scope === "progress" && /page hidden snapshot captured/i.test(message)) {
-      return "已记录后台切换前的进度快照";
+      return null;
     }
     if (scope === "progress" && /page visible snapshot captured/i.test(message)) {
-      return "已记录切回前台后的进度快照";
+      return null;
     }
     if (level === "error") {
       return "脚本运行出现异常，请查看控制台日志";
     }
     if (level === "warn") {
-      return "脚本已处理一个异常情况";
+      return null;
     }
     return null;
   }
@@ -1760,14 +2726,19 @@
 
   async function loadConfig() {
     state.config.autoQuiz = await gmGetValue(STORAGE_KEYS.autoQuiz, true);
+    state.config.autoOpenRegularExam = await gmGetValue(STORAGE_KEYS.autoOpenRegularExam, true);
     state.config.blockReportApis = await gmGetValue(STORAGE_KEYS.blockReportApis, true);
     state.config.blockDetectApis = await gmGetValue(STORAGE_KEYS.blockDetectApis, true);
     state.config.antiAntiDebug = await gmGetValue(STORAGE_KEYS.antiAntiDebug, true);
+    const answerBank = await gmGetValue(STORAGE_KEYS.examAnswerBank, {});
+    state.exam.answerBank = answerBank && typeof answerBank === "object" ? answerBank : {};
+    state.exam.session = await gmGetValue(STORAGE_KEYS.examSession, null);
     logSuccess("config", "loaded config", { ...state.config });
   }
 
   function getConfigLabel(key) {
     if (key === "autoQuiz") return "自动答题";
+    if (key === "autoOpenRegularExam") return "自动打开平时测试";
     if (key === "blockReportApis") return "异常上报拦截";
     if (key === "blockDetectApis") return "异常检测拦截";
     if (key === "antiAntiDebug") return "反反调试/F12";
@@ -1791,6 +2762,9 @@
     gmRegisterMenuCommandCompat(`自动答题: ${state.config.autoQuiz ? "开" : "关"}`, () => {
       void toggleConfig("autoQuiz");
     });
+    gmRegisterMenuCommandCompat(`自动打开平时测试: ${state.config.autoOpenRegularExam ? "开" : "关"}`, () => {
+      void toggleConfig("autoOpenRegularExam");
+    });
     gmRegisterMenuCommandCompat(`屏蔽异常上报: ${state.config.blockReportApis ? "开" : "关"}`, () => {
       void toggleConfig("blockReportApis");
     });
@@ -1809,6 +2783,12 @@
     patchJqueryAjax();
     patchMonitorUtil();
     patchSendBeacon();
+    installAntiDebugGuards();
+
+    if (isExamPage()) {
+      handleExamPageRuntime();
+      return;
+    }
 
     const vm = findStudyVm();
     if (!vm) {
@@ -1817,10 +2797,10 @@
       return;
     }
 
-    installAntiDebugGuards();
     patchStudyVm(vm);
     closeTransientDialogs(vm);
     ensureVideoState(vm);
+    syncProgressFromPlayback(vm, "runtimeTick");
 
     if (now() - state.progressDebug.lastTickLoggedAt > 8000) {
       state.progressDebug.lastTickLoggedAt = now();
@@ -1833,6 +2813,11 @@
       updateUi("等待题组数据");
     } else {
       updateUi("运行中");
+    }
+
+    if (maybeLaunchCurrentLessonExam(vm)) {
+      updateUi("当前节平时测试已打开");
+      return;
     }
 
     advanceVideo(vm);
@@ -1848,7 +2833,9 @@
     patchFetch();
     patchXhr();
     patchSendBeacon();
-    startVmPatchProbe();
+    if (isStudyPage()) {
+      startVmPatchProbe();
+    }
 
     await loadConfig();
     registerMenus();
