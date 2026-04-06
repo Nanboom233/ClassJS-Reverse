@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         2026 智慧树自动浇水施肥开花结果 - Enhanced
 // @namespace    auto-wisdom-tree
-// @version      0.2.33
+// @version      0.3.1
 // @description  智慧树是一棵树
 // @match        *://studyvideoh5.zhihuishu.com/*
 // @match        *://onlineexamh5new.zhihuishu.com/*
@@ -28,7 +28,6 @@
   "use strict";
 
   const PAGE = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
-  const SCRIPT_TAG = "[auto-wisdom-tree]";
   const PageResponse = PAGE.Response || Response;
   const PageEvent = PAGE.Event || Event;
   const PAGE_HOST = String(PAGE.location?.host || location.host || "").toLowerCase();
@@ -86,9 +85,6 @@
       observedAt: 0,
     },
     progressDebug: {
-      hooksInstalled: false,
-      hiddenSnapshot: null,
-      lastTickLoggedAt: 0,
       lastSnapshot: null,
     },
     serverProgress: {
@@ -141,14 +137,9 @@
       closeRequestStudentExamId: "",
       closeAttemptCount: 0,
       lastCloseAttemptAt: 0,
-      pendingLastQuestionSaveClose: false,
-      pendingLastQuestionSaveSignature: "",
-      lastLastQuestionSaveAt: 0,
-      pendingTemporarySaveClose: false,
-      pendingTemporarySaveSignature: "",
-      lastTemporarySaveAt: 0,
+      pendingSave: { kind: "", signature: "", startedAt: 0 },
       llm: {
-        apiBaseUrl: "https://api.openai.com/v1",
+        apiBaseUrl: "https://generativelanguage.googleapis.com/v1beta",
         apiKey: "",
         model: "",
         requestKey: "",
@@ -169,7 +160,6 @@
     blockReportApis: "awt:blockReportApis",
     blockDetectApis: "awt:blockDetectApis",
     antiAntiDebug: "awt:antiAntiDebug",
-    examAnswerBank: "awt:examAnswerBank",
     examCompletionPrefix: "awt:examCompletion:",
     examSession: "awt:examSession",
     examLlmApiBaseUrl: "awt:examLlmApiBaseUrl",
@@ -190,7 +180,7 @@
     /studentexam-api\.zhihuishu\.com\/studentExam.*\/app\/queryIsLimitFlow/i,
   ];
 
-  const STUDY_PROGRESS_QUERY_RE = /\/learning\/queryStuyInfo/i;
+  const STUDY_PROGRESS_QUERY_RE = /\/learning\/queryStuyInfo/i; // (sic) platform typo: queryStuyInfo
   const STUDY_SAVE_CACHE_RE = /\/learning\/saveCacheIntervalTimeV2/i;
   const STUDY_SAVE_DB_RE = /\/learning\/saveDatabaseIntervalTimeV2/i;
 
@@ -206,6 +196,10 @@
     scope: "color:#94a3b8;font-weight:700;",
     text: "color:#e5e7eb;",
   };
+
+  function getSession() {
+    return state.exam.session && typeof state.exam.session === "object" ? state.exam.session : {};
+  }
 
   function emitLog(level, scope, message, payload) {
     const method = level === "error" ? "error" : level === "warn" ? "warn" : "log";
@@ -437,13 +431,14 @@
   function normalizeExamLlmApiBaseUrl(value) {
     const normalized = normalizeText(value).replace(/\/+$/, "");
     if (!normalized) return "";
-    return normalized.replace(/\/chat\/completions$/i, "");
+    return normalized.replace(/\/models\/[^/]*(:generateContent)?(\?.*)?$/i, "");
   }
 
-  function buildExamLlmApiEndpoint(baseUrl) {
+  function buildExamLlmApiEndpoint(baseUrl, model, apiKey) {
     const normalized = normalizeExamLlmApiBaseUrl(baseUrl);
-    if (!normalized) return "";
-    return /\/chat\/completions$/i.test(normalized) ? normalized : `${normalized}/chat/completions`;
+    if (!normalized || !model) return "";
+    const url = `${normalized}/models/${encodeURIComponent(model)}:generateContent`;
+    return apiKey ? `${url}?key=${encodeURIComponent(apiKey)}` : url;
   }
 
   function isExamLlmConfigured() {
@@ -478,13 +473,14 @@
   }
 
   async function configureExamLlmApiBaseUrl() {
-    const currentValue = normalizeExamLlmApiBaseUrl(state.exam.llm.apiBaseUrl) || "https://api.openai.com/v1";
+    const defaultUrl = "https://generativelanguage.googleapis.com/v1beta";
+    const currentValue = normalizeExamLlmApiBaseUrl(state.exam.llm.apiBaseUrl) || defaultUrl;
     const nextValue = promptConfigValue(
-      "设置考试外部答题 API Base URL。\n可以填 OpenAI-compatible 基础地址，例如 https://api.openai.com/v1 。\n留空表示恢复默认 OpenAI 地址。",
+      "设置考试外部答题 Gemini API Base URL。\n例如 https://generativelanguage.googleapis.com/v1beta 。\n留空表示恢复默认 Gemini 地址。",
       currentValue,
     );
     if (nextValue === null) return;
-    const normalized = normalizeExamLlmApiBaseUrl(nextValue) || "https://api.openai.com/v1";
+    const normalized = normalizeExamLlmApiBaseUrl(nextValue) || defaultUrl;
     await saveExamLlmConfigField("examLlmApiBaseUrl", "apiBaseUrl", normalized);
   }
 
@@ -499,7 +495,7 @@
 
   async function configureExamLlmModel() {
     const nextValue = promptConfigValue(
-      "设置考试外部答题 Model。\n例如 gpt-4.1、grok-3-mini、qwen-max。\n留空表示清空。",
+      "设置考试外部答题 Model。\n例如 gemini-3.1-pro-preview、gemini-2.5-flash-preview-05-20。\n留空表示清空。",
       normalizeText(state.exam.llm.model),
     );
     if (nextValue === null) return;
@@ -736,7 +732,7 @@
     return answers;
   }
 
-  function storeExamAnswer(questionInfo, answers, source = "page") {
+  function storeExamAnswer(questionInfo, answers) {
     const normalizedAnswers = normalizeResolvedAnswers(answers);
     if (!normalizedAnswers.length) return false;
     const keys = collectQuestionInfoSignatureKeys(questionInfo);
@@ -745,7 +741,6 @@
     for (const key of keys) {
       state.exam.answerBank[key] = [...normalizedAnswers];
     }
-    void source;
     return true;
   }
 
@@ -1770,11 +1765,6 @@
     return changed;
   }
 
-  function installProgressDebugHooks() {
-    if (state.progressDebug.hooksInstalled) return;
-    state.progressDebug.hooksInstalled = true;
-  }
-
   function startRuntimeLoop() {
     if (state.runtimeTimerId) return;
     runtimeTick();
@@ -1948,14 +1938,8 @@
     };
   }
 
-  function resetExamTemporarySaveState() {
-    state.exam.pendingTemporarySaveClose = false;
-    state.exam.pendingTemporarySaveSignature = "";
-  }
-
-  function resetExamLastQuestionSaveState() {
-    state.exam.pendingLastQuestionSaveClose = false;
-    state.exam.pendingLastQuestionSaveSignature = "";
+  function resetExamSaveState() {
+    state.exam.pendingSave = { kind: "", signature: "", startedAt: 0 };
   }
 
   function resetHomeworkExamCloseRequestState() {
@@ -2141,10 +2125,13 @@
 
   function armExamSession(sessionPayload) {
     if (!sessionPayload || typeof sessionPayload !== "object") return;
+    const ts = now();
     state.exam.session = {
-      ...(state.exam.session && typeof state.exam.session === "object" ? state.exam.session : {}),
+      ...(getSession()),
+      launchState: "armed",
+      launchStateAt: ts,
       ...sessionPayload,
-      armedAt: now(),
+      armedAt: ts,
     };
     void gmSetValue(STORAGE_KEYS.examSession, state.exam.session);
   }
@@ -2176,7 +2163,7 @@
 
   function markExamSessionLaunchState(launchState, extra = {}) {
     armExamSession({
-      ...(state.exam.session && typeof state.exam.session === "object" ? state.exam.session : {}),
+      ...(getSession()),
       ...extra,
       launchState,
       launchStateAt: now(),
@@ -2246,17 +2233,7 @@
     const candidates = [
       studentExamLike,
       studentExamDto,
-      studentExamLike.studentExamDto,
-      studentExamLike.exam,
-      studentExamLike.examBase,
-      studentExamLike.examinationArr,
-      studentExamLike.exam?.examBase,
-      studentExamLike.exam?.examinationArr,
-      studentExamDto?.exam,
-      studentExamDto?.examBase,
       studentExamDto?.examinationArr,
-      studentExamDto?.exam?.examBase,
-      studentExamDto?.exam?.examinationArr,
     ];
     candidates.forEach((candidate) => {
       if (!candidate || typeof candidate !== "object" || Array.isArray(candidate) || visited.has(candidate)) return;
@@ -2268,16 +2245,8 @@
 
   function getStudentExamCompletionRatioFromContainer(container) {
     if (!container || typeof container !== "object") return null;
-    const shallowKeys = Object.keys(container).slice(0, 24);
-    for (const key of shallowKeys) {
-      const parsed = parseStudentExamCompletionRatio(container[key]);
-      if (parsed) {
-        return {
-          ...parsed,
-          source: key,
-        };
-      }
-    }
+    const parsed = parseStudentExamCompletionRatio(container.ratioText);
+    if (parsed) return { ...parsed, source: "ratioText" };
     return null;
   }
 
@@ -2296,93 +2265,17 @@
 
   function getStudentExamProblemCount(container) {
     if (!container || typeof container !== "object") return null;
-    const countSources = [];
-    const visited = new Set();
-    [
-      container,
-      container.examinationArr,
-      container.examBase,
-      container.exam,
-      container.exam?.examinationArr,
-      container.exam?.examBase,
-    ].forEach((candidate) => {
-      if (!candidate || typeof candidate !== "object" || Array.isArray(candidate) || visited.has(candidate)) return;
-      visited.add(candidate);
-      countSources.push(candidate);
+    const direct = normalizeExamCount(container.problemNum) ?? normalizeExamCount(container.questionCount);
+    if (direct !== null) return direct;
+    const workExamParts = Array.isArray(container.workExamParts) ? container.workExamParts : [];
+    if (!workExamParts.length) return null;
+    let total = 0;
+    let found = false;
+    workExamParts.forEach((part) => {
+      const count = normalizeExamCount(part?.questionCount);
+      if (count !== null) { total += count; found = true; }
     });
-    const directKeys = [
-      "problemNum",
-      "questionCount",
-    ];
-    for (const source of countSources) {
-      for (const key of directKeys) {
-        const count = normalizeExamCount(source[key]);
-        if (count !== null) return count;
-      }
-    }
-    for (const source of countSources) {
-      const workExamParts = Array.isArray(source.workExamParts) ? source.workExamParts : [];
-      if (!workExamParts.length) continue;
-      let total = 0;
-      let hasQuestionCount = false;
-      workExamParts.forEach((part) => {
-        const count = normalizeExamCount(part?.questionCount);
-        if (count === null) return;
-        total += count;
-        hasQuestionCount = true;
-      });
-      if (hasQuestionCount) return total;
-    }
-    return null;
-  }
-
-  function getStudentExamRecordedPercentage(container) {
-    if (!container || typeof container !== "object") return null;
-    const hasExamProgressContext = (
-      getStudentExamAchieveCount(container) !== null
-      || getStudentExamProblemCount(container) !== null
-      || isLikelyStudentExamDto(container)
-    );
-    if (!hasExamProgressContext) return null;
-    return normalizeExamCount(container.percentage);
-  }
-
-  function getStudentExamRecordedCompletion(studentExamLike) {
-    const containers = getStudentExamCompletionContainers(studentExamLike);
-    if (!containers.length) return null;
-    let answered = null;
-    let total = null;
-    let percentage = null;
-    let ratio = null;
-    containers.forEach((container) => {
-      const nextRatio = getStudentExamCompletionRatioFromContainer(container);
-      if (!ratio && nextRatio) {
-        ratio = nextRatio;
-      }
-      const nextAnswered = getStudentExamAchieveCount(container);
-      if (nextAnswered !== null && (answered === null || nextAnswered > answered)) {
-        answered = nextAnswered;
-      }
-      const nextTotal = getStudentExamProblemCount(container);
-      if (nextTotal !== null && (total === null || nextTotal > total)) {
-        total = nextTotal;
-      }
-      const nextPercentage = getStudentExamRecordedPercentage(container);
-      if (nextPercentage !== null && (percentage === null || nextPercentage > percentage)) {
-        percentage = nextPercentage;
-      }
-    });
-    if (ratio) {
-      answered = ratio.answered;
-      total = ratio.total;
-    }
-    if (answered === null && total === null && percentage === null) return null;
-    return {
-      answered,
-      total,
-      percentage,
-      ratioText: ratio?.raw || "",
-    };
+    return found ? total : null;
   }
 
   function getStudentExamCompletionScore(completion) {
@@ -2401,6 +2294,27 @@
       return completion.answered >= completion.total;
     }
     return completion.percentage !== null && completion.percentage >= 100;
+  }
+
+  function isExamComplete(studentExamLike, entry = null) {
+    const dto = extractStudentExamDto(studentExamLike)
+      || extractStudentExamDto(entry?.progressTarget)
+      || extractStudentExamDto(entry?.lesson);
+    if (!dto) return false;
+    // Source 1: server state (most reliable, 3 = submitted)
+    if (Number(dto.state || 0) >= 3) return true;
+    // Source 2: browser storage answered count vs total
+    const studentExamId = normalizeVideoId(dto.id);
+    if (studentExamId) {
+      const achieveCount = normalizeExamCount(getBrowserStorageItem(`achieveCount${studentExamId}`));
+      const problemNum = normalizeExamCount(dto.problemNum) ?? normalizeExamCount(dto.questionCount);
+      if (achieveCount !== null && problemNum !== null && achieveCount >= problemNum && problemNum > 0) {
+        return true;
+      }
+    }
+    // Source 3: GM shared completion
+    const shared = getStudentExamSharedCompletion({ studentExamId: studentExamId || "" });
+    return isStudentExamCompletionComplete(shared);
   }
 
   function pickPreferredStudentExamCompletion(currentCompletion, nextCompletion) {
@@ -2456,47 +2370,6 @@
     return "";
   }
 
-  function getStudentExamCachedAchieveCount(studentExamLike, entry = null) {
-    const studentExamDto = extractStudentExamDto(studentExamLike)
-      || extractStudentExamDto(entry?.progressTarget)
-      || extractStudentExamDto(entry?.lesson)
-      || extractStudentExamDto(entry?.chapter)
-      || (isLikelyStudentExamDto(studentExamLike) ? studentExamLike : null);
-    const studentExamId = normalizeVideoId(studentExamDto?.id);
-    if (!studentExamId) return null;
-    return normalizeExamCount(getBrowserStorageItem(`achieveCount${studentExamId}`));
-  }
-
-  function collectStudentExamCompletionSources(studentExamLike, entry = null) {
-    const sources = [];
-    const visited = new Set();
-    const expectedStudentExamId = normalizeVideoId(
-      extractStudentExamDto(studentExamLike)?.id
-      || extractStudentExamDto(entry?.progressTarget)?.id
-      || extractStudentExamDto(entry?.lesson)?.id
-      || extractStudentExamDto(entry?.smallLesson)?.id
-      || extractStudentExamDto(entry?.chapter)?.id,
-    );
-    const candidates = [
-      studentExamLike,
-      entry,
-      entry?.progressTarget,
-      entry?.lesson,
-      entry?.smallLesson,
-      entry?.chapter,
-    ];
-    candidates.forEach((candidate) => {
-      if (!candidate || typeof candidate !== "object" || visited.has(candidate)) return;
-      const candidateStudentExamId = normalizeVideoId(extractStudentExamDto(candidate)?.id);
-      if (expectedStudentExamId && candidateStudentExamId && candidateStudentExamId !== expectedStudentExamId) {
-        return;
-      }
-      visited.add(candidate);
-      sources.push(candidate);
-    });
-    return sources;
-  }
-
   function getStudentExamSharedCompletionKey(studentExamId) {
     const normalizedStudentExamId = normalizeVideoId(studentExamId);
     return normalizedStudentExamId ? `${STORAGE_KEYS.examCompletionPrefix}${normalizedStudentExamId}` : "";
@@ -2545,12 +2418,6 @@
     };
   }
 
-  function readStudentExamSharedCompletionFromStorage(studentExamId) {
-    const storageKey = getStudentExamSharedCompletionKey(studentExamId);
-    if (!storageKey) return null;
-    const storedCompletion = gmGetValueSync(storageKey, null);
-    return normalizeStudentExamSharedCompletion(storedCompletion, studentExamId);
-  }
 
   async function syncStudentExamSharedCompletionFromStorage(studentExamId, force = false) {
     const normalizedStudentExamId = normalizeVideoId(studentExamId);
@@ -2601,12 +2468,15 @@
 
     const timestamp = now();
     const lastReadAt = Number(state.exam.completionCacheReadAt[studentExamId] || 0);
-    if (!forceRead && lastReadAt && timestamp - lastReadAt < 1200) {
+    if (!forceRead && lastReadAt && timestamp - lastReadAt < 1200 && cachedCompletion !== null) {
       return cachedCompletion;
     }
 
     state.exam.completionCacheReadAt[studentExamId] = timestamp;
-    const storedCompletion = readStudentExamSharedCompletionFromStorage(studentExamId);
+    const storageKey = getStudentExamSharedCompletionKey(studentExamId);
+    const storedCompletion = storageKey
+      ? normalizeStudentExamSharedCompletion(gmGetValueSync(storageKey, null), studentExamId)
+      : null;
 
     if (storedCompletion) {
       state.exam.completionCache[studentExamId] = storedCompletion;
@@ -2743,9 +2613,7 @@
     const normalizedStudentExamId = normalizeVideoId(studentExamId);
     if (!normalizedStudentExamId) return false;
 
-    const session = state.exam.session && typeof state.exam.session === "object"
-      ? state.exam.session
-      : null;
+    const session = state.exam.session || null;
     if (!session) return false;
 
     const sessionStudentExamId = normalizeVideoId(session.studentExamId || session.stuExamId);
@@ -2771,7 +2639,7 @@
 
     const resolved = safeCall(() => router.resolve({
       path: "/webExamList",
-      name: "webExanList",
+      name: "webExanList", // (sic) platform typo: webExanList
     }), null);
     return normalizeText(resolved?.href || "");
   }
@@ -2849,36 +2717,15 @@
     if (preferVmSaveSuccess && typeof pageVm.saveSuccess === "function") {
       safeCall(() => pageVm.saveSuccess(), false);
     }
-    safeCall(() => {
-      if (typeof PAGE.close === "function") {
-        PAGE.close();
-        return true;
-      }
-      return false;
-    }, false);
-    safeCall(() => {
-      if (typeof window.close === "function" && window.close !== PAGE.close) {
-        window.close();
-        return true;
-      }
-      return false;
-    }, false);
-    safeCall(() => {
-      if (typeof PAGE.open !== "function") return false;
-      const selfWindow = PAGE.open("", "_self");
-      if (selfWindow && typeof selfWindow.close === "function") {
-        selfWindow.close();
-        return true;
-      }
-      return false;
-    }, false);
-    safeCall(() => {
-      if (PAGE.top && PAGE.top !== PAGE && typeof PAGE.top.close === "function") {
-        PAGE.top.close();
-        return true;
-      }
-      return false;
-    }, false);
+    const closeStrategies = [
+      () => { if (typeof pageVm?.closeWindow === "function") pageVm.closeWindow(); },
+      () => { if (typeof pageVm?.$router?.push === "function") pageVm.$router.push({ name: "webExanList" }); },
+      () => { PAGE.close(); },
+      () => { if (typeof PAGE.history?.back === "function") PAGE.history.back(); },
+    ];
+    for (const strategy of closeStrategies) {
+      safeCall(strategy);
+    }
 
     attemptHomeworkExamRouteFallback(pageVm, reason, closeAttemptCount);
     return true;
@@ -2902,7 +2749,7 @@
 
     // The save chain (switchQuestion(0,3) → saveSuccessChild → temporarySave
     // → saveSuccess) must finish before we close.  Wait if it is in progress.
-    if (state.exam.pendingLastQuestionSaveClose || state.exam.pendingTemporarySaveClose) {
+    if (state.exam.pendingSave.kind) {
       return false;
     }
 
@@ -2948,7 +2795,7 @@
       // Even when auto-close is disabled, release the session mutex so the
       // study page can launch the next exam.
       markExamSessionLaunchState("closed", {
-        ...(state.exam.session && typeof state.exam.session === "object" ? state.exam.session : {}),
+        ...(getSession()),
         launchState: "closed",
         launchStateAt: now(),
         lastHeartbeatAt: 0,
@@ -2960,13 +2807,17 @@
   }
 
   function getLatestExamSessionForStudyPage() {
-    const session = state.exam.session && typeof state.exam.session === "object" ? state.exam.session : null;
+    const session = state.exam.session || null;
     if (!isStudyPage()) return session;
 
     const storedSession = gmGetValueSync(STORAGE_KEYS.examSession, null);
     if (storedSession && typeof storedSession === "object") {
-      state.exam.session = storedSession;
-      return storedSession;
+      const storedArmedAt = Number(storedSession.armedAt || 0);
+      const memoryArmedAt = Number(session?.armedAt || 0);
+      if (!session || storedArmedAt >= memoryArmedAt) {
+        state.exam.session = storedSession;
+      }
+      return state.exam.session;
     }
 
     return session;
@@ -2980,11 +2831,12 @@
     const launchKey = getExamSessionLaunchKey(session);
     if (launchKey) {
       cleanupExamLaunchHandle(launchKey);
+      delete state.exam.launchedSessionExamKeys[launchKey];
     }
 
     const timestamp = now();
     const nextSession = {
-      ...(state.exam.session && typeof state.exam.session === "object" ? state.exam.session : {}),
+      ...(getSession()),
       ...session,
       launchState: "closed",
       launchStateAt: timestamp,
@@ -3008,6 +2860,16 @@
     return true;
   }
 
+  function buildStaleSessionCloseExtra(session, sharedCompletion, closedBy) {
+    return {
+      studentExamId: normalizeVideoId(session.studentExamId || session.stuExamId || session.lessonId),
+      examId: normalizeVideoId(session.examId || sharedCompletion?.examId),
+      closeReason: normalizeText(sharedCompletion?.reason || session.closeReason || ""),
+      closedBy,
+      completedAt: Number(sharedCompletion?.updatedAt || 0) || now(),
+    };
+  }
+
   function tryResolveStaleRegularExamSessionOnStudyPage(session = state.exam.session, reason = "studyPageSessionCheck") {
     if (!isStudyPage()) return false;
     if (!session || typeof session !== "object") return false;
@@ -3016,6 +2878,18 @@
     const launchState = getExamSessionLaunchState(session);
     if (!launchState || launchState === "closed") return false;
 
+    // Prevent "closing" dead loop: if already closing for >30s, force close.
+    if (launchState === "closing") {
+      const closingAge = now() - Number(session.launchStateAt || 0);
+      if (closingAge > 30000) {
+        return markRegularExamSessionClosedOnStudyPage(session, `${reason}:closing-timeout`, {
+          ...buildStaleSessionCloseExtra(session, null, "study-page-closing-timeout"),
+          closingAgeMs: closingAge,
+        });
+      }
+      return false;
+    }
+
     const launchKey = getExamSessionLaunchKey(session);
     const launchHandleEntry = launchKey ? state.exam.launchHandles[launchKey] : null;
     const handle = launchHandleEntry?.handle || null;
@@ -3023,13 +2897,17 @@
       ? safeCall(() => Boolean(handle.closed), false)
       : false;
     if (handleClosed) {
-      return markRegularExamSessionClosedOnStudyPage(session, `${reason}:launch-handle-closed`, {
-        closedBy: "study-page-launch-handle",
-      });
+      return markRegularExamSessionClosedOnStudyPage(session, `${reason}:launch-handle-closed`,
+        buildStaleSessionCloseExtra(session, null, "study-page-launch-handle"),
+      );
     }
 
-    const studentExamId = normalizeVideoId(session.studentExamId || session.stuExamId);
-    if (!studentExamId) return false;
+    const studentExamId = normalizeVideoId(session.studentExamId || session.stuExamId || session.lessonId);
+    if (!studentExamId) {
+      return markRegularExamSessionClosedOnStudyPage(session, `${reason}:missing-ids`,
+        buildStaleSessionCloseExtra(session, null, "study-page-missing-exam-id"),
+      );
+    }
 
     const sharedCompletion = getStudentExamSharedCompletion({
       id: studentExamId,
@@ -3054,13 +2932,9 @@
       if (!pendingHandleClosed) {
         const closePendingAt = now();
         markExamSessionLaunchState("closing", {
-          ...(state.exam.session && typeof state.exam.session === "object" ? state.exam.session : {}),
-          studentExamId,
-          examId: normalizeVideoId(session.examId || sharedCompletion?.examId),
-          closeReason: normalizeText(sharedCompletion?.reason || normalizedReason || session.closeReason || ""),
+          ...(getSession()),
+          ...buildStaleSessionCloseExtra(session, sharedCompletion, "study-page-shared-completion-pending"),
           lastHeartbeatAt: closePendingAt,
-          completedAt: Number(sharedCompletion?.updatedAt || 0) || now(),
-          closedBy: "study-page-shared-completion-pending",
         });
         logWarn("exam", "shared-complete regular exam still awaiting owner close", {
           reason: normalizedReason,
@@ -3071,109 +2945,57 @@
         return false;
       }
 
-      return markRegularExamSessionClosedOnStudyPage(session, `${reason}:shared-completion`, {
-        studentExamId,
-        examId: normalizeVideoId(session.examId || sharedCompletion?.examId),
-        closeReason: normalizeText(sharedCompletion?.reason || normalizedReason || session.closeReason || ""),
-        closedBy: "study-page-shared-completion",
-        completedAt: Number(sharedCompletion?.updatedAt || 0) || now(),
-      });
+      return markRegularExamSessionClosedOnStudyPage(session, `${reason}:shared-completion`,
+        buildStaleSessionCloseExtra(session, sharedCompletion, "study-page-shared-completion"),
+      );
     }
 
-    const staleHeartbeatAt = Number(session.lastHeartbeatAt || session.launchStateAt || 0);
-    markExamSessionLaunchState("closing", {
-      ...(state.exam.session && typeof state.exam.session === "object" ? state.exam.session : {}),
-      studentExamId,
-      examId: normalizeVideoId(session.examId || sharedCompletion?.examId),
-      closeReason: normalizeText(sharedCompletion?.reason || normalizedReason || session.closeReason || ""),
-      lastHeartbeatAt: staleHeartbeatAt,
-      completedAt: Number(sharedCompletion?.updatedAt || 0) || now(),
-      closedBy: "study-page-shared-completion-missing-handle",
-    });
-    logWarn("exam", "shared-complete regular exam missing tracked handle, keeping session closing", {
-      reason: normalizedReason,
-      launchKey,
-      studentExamId,
-      examId: normalizeVideoId(session.examId || sharedCompletion?.examId),
-    });
+    // No tracked handle + shared completion complete → mark closed directly
+    // (previously marked "closing" which created an infinite loop since there
+    // is no handle to close and the state never transitions to "closed").
+    return markRegularExamSessionClosedOnStudyPage(session, `${reason}:shared-completion-no-handle`,
+      buildStaleSessionCloseExtra(session, sharedCompletion, "study-page-shared-completion-missing-handle"),
+    );
     return false;
   }
 
-  function getStudentExamRecordedCompletionFromRelatedSources(studentExamLike, entry = null) {
-    let completion = null;
-    const sources = collectStudentExamCompletionSources(studentExamLike, entry);
-    sources.forEach((source) => {
-      completion = pickPreferredStudentExamCompletion(
-        completion,
-        getStudentExamRecordedCompletion(source),
-      );
-    });
-
-    const cachedAchieveCount = getStudentExamCachedAchieveCount(studentExamLike, entry);
-    if (cachedAchieveCount !== null) {
-      let total = completion?.total ?? null;
-      sources.forEach((source) => {
-        const nextTotal = getStudentExamProblemCount(source);
-        if (nextTotal !== null && (total === null || nextTotal > total)) {
-          total = nextTotal;
-        }
-      });
-      const cachedCompletion = {
-        answered: cachedAchieveCount,
-        total,
-        percentage: total !== null && total > 0
-          ? clampPercent(Math.floor((cachedAchieveCount / total) * 100))
-          : null,
-        ratioText: total !== null && total > 0 ? `${cachedAchieveCount}/${total}` : "",
-      };
-      completion = pickPreferredStudentExamCompletion(completion, cachedCompletion);
-    }
-
-    completion = pickPreferredStudentExamCompletion(
-      completion,
-      getStudentExamSharedCompletion(studentExamLike, entry),
-    );
-
-    return completion;
-  }
-
-  function isStudentExamRecordedComplete(studentExamLike, entry = null) {
-    return isStudentExamCompletionComplete(
-      getStudentExamRecordedCompletionFromRelatedSources(studentExamLike, entry),
-    );
+  function isExamLaunchHandleAlive(launchKey) {
+    const handle = state.exam.launchHandles[launchKey];
+    return handle && typeof handle === "object" && !handle.closed;
   }
 
   function hasLaunchedAnyRegularExamThisSession() {
     let session = getLatestExamSessionForStudyPage();
     if (!session) return false;
     tryResolveStaleRegularExamSessionOnStudyPage(session, "hasLaunchedAnyRegularExamThisSession");
-    session = state.exam.session && typeof state.exam.session === "object" ? state.exam.session : session;
+    session = state.exam.session || session;
     if (!session) return false;
     const sessionLaunchKey = getExamSessionLaunchKey(session);
-    const hadTrackedLaunchHandle = Boolean(sessionLaunchKey && state.exam.launchHandles[sessionLaunchKey]?.handle);
+    const hadTrackedLaunchHandle = Boolean(sessionLaunchKey && isExamLaunchHandleAlive(sessionLaunchKey));
     maybeCloseClosingExamLaunchFromSession(session, "hasLaunchedAnyRegularExamThisSession");
-    session = state.exam.session && typeof state.exam.session === "object" ? state.exam.session : session;
+    session = state.exam.session || session;
     if (!session) return false;
     const launchState = getExamSessionLaunchState(session);
     const launchKey = getExamSessionLaunchKey(session);
-    const launchHandleEntry = launchKey ? state.exam.launchHandles[launchKey] : null;
-    const launchHandle = launchHandleEntry?.handle || null;
-    const launchHandleClosed = launchHandle
-      ? safeCall(() => Boolean(launchHandle.closed), false)
-      : false;
-    if (launchHandleClosed) {
-      markRegularExamSessionClosedOnStudyPage(session, "hasLaunchedAnyRegularExamThisSession:launch-handle-closed", {
-        closedBy: "study-page-launch-handle",
-      });
-      return false;
-    }
-    if (launchState === "closing" && hadTrackedLaunchHandle && launchKey && !state.exam.launchHandles[launchKey]) {
-      markRegularExamSessionClosedOnStudyPage(session, "hasLaunchedAnyRegularExamThisSession:closing-handle-confirmed", {
-        closedBy: "study-page-owner-close",
-      });
-      return false;
-    }
-    if (launchHandle) {
+    if (!isExamLaunchHandleAlive(launchKey)) {
+      const launchHandleEntry = launchKey ? state.exam.launchHandles[launchKey] : null;
+      const launchHandle = launchHandleEntry?.handle || null;
+      const launchHandleClosed = launchHandle
+        ? safeCall(() => Boolean(launchHandle.closed), false)
+        : false;
+      if (launchHandleClosed) {
+        markRegularExamSessionClosedOnStudyPage(session, "hasLaunchedAnyRegularExamThisSession:launch-handle-closed", {
+          closedBy: "study-page-launch-handle",
+        });
+        return false;
+      }
+      if (launchState === "closing" && hadTrackedLaunchHandle && launchKey && !state.exam.launchHandles[launchKey]) {
+        markRegularExamSessionClosedOnStudyPage(session, "hasLaunchedAnyRegularExamThisSession:closing-handle-confirmed", {
+          closedBy: "study-page-owner-close",
+        });
+        return false;
+      }
+    } else {
       return true;
     }
     const timestamp = now();
@@ -3188,78 +3010,33 @@
     return false;
   }
 
-  function isStudentExamPending(studentExamLike) {
+  function isStudentExamPending(studentExamLike, entry = null) {
     const studentExamDto = extractStudentExamDto(studentExamLike)
       || (isLikelyStudentExamDto(studentExamLike) ? studentExamLike : null);
     if (!studentExamDto || typeof studentExamDto !== "object") return false;
     const examState = Number(studentExamDto.state);
     if (examState === 3 || examState === 4) return false;
-    if (state.config.autoSubmitCompletedExam) {
-      // With auto-submit, only server state 3/4 counts as done.
-      return true;
-    }
-    const recordedComplete = isStudentExamRecordedComplete(studentExamLike);
-    if (examState === 2 && recordedComplete) return false;
-    return !recordedComplete;
+    if (state.config.autoSubmitCompletedExam) return true;
+    return !isExamComplete(studentExamLike, entry);
   }
 
   function isLikelyStudentExamDto(candidate) {
     if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return false;
     const hasExamId = typeof candidate.id !== "undefined" && candidate.id !== null;
     const hasExamState = typeof candidate.state !== "undefined";
-    const hasExamUrl = Boolean(normalizeText(candidate.examUrl || ""));
-    const hasNestedExam = Boolean(candidate.exam && typeof candidate.exam === "object");
-    return hasExamId && (hasExamState || hasExamUrl || hasNestedExam);
+    return hasExamId && hasExamState;
   }
 
   function extractStudentExamDto(source) {
     if (!source || typeof source !== "object") return null;
-
-    const directCandidates = [
-      source.studentExamDto,
-      source.studentExam,
-      source.chapterStudentExamDto,
-      source.chapterExamDto,
-      source.chapterExam,
-      source.examDto,
-      source.examInfo,
-      source.homeworkExam,
-      source,
-    ];
-    for (const candidate of directCandidates) {
-      if (isLikelyStudentExamDto(candidate)) return candidate;
-    }
-
-    const shallowValues = Object.keys(source).slice(0, 24).map((key) => source[key]);
-    for (const candidate of shallowValues) {
-      if (isLikelyStudentExamDto(candidate)) return candidate;
-    }
+    if (isLikelyStudentExamDto(source.studentExamDto)) return source.studentExamDto;
+    if (isLikelyStudentExamDto(source)) return source;
     return null;
-  }
-
-  // Extract the encrypted stuExamId from an examUrl like:
-  // https://…/stuExamWeb.html#/webExamList/dohomework/{recruitId}/{stuExamId}/{examId}/…
-  function extractStuExamIdFromExamUrl(examUrl) {
-    if (!examUrl || typeof examUrl !== "string") return "";
-    try {
-      const hashIndex = examUrl.indexOf("#/");
-      if (hashIndex < 0) return "";
-      const hashPath = examUrl.substring(hashIndex + 2);
-      const segments = hashPath.split("/").filter(Boolean);
-      // Expected: webExamList / dohomework / {recruitId} / {stuExamId} / …
-      const dohomeworkIdx = segments.indexOf("dohomework");
-      if (dohomeworkIdx >= 0 && segments.length > dohomeworkIdx + 2) {
-        return normalizeVideoId(segments[dohomeworkIdx + 2]) || "";
-      }
-      return "";
-    } catch (_) {
-      return "";
-    }
   }
 
   function buildExamRouteParams(routeLike) {
     const params = routeLike?.params || {};
-    const session = state.exam.session && typeof state.exam.session === "object" ? state.exam.session : {};
+    const session = getSession();
     return {
       recruitId: normalizeVideoId(params.recruitId) || normalizeVideoId(session.recruitId),
       stuExamId: normalizeVideoId(params.stuExamId) || normalizeVideoId(session.studentExamId || session.stuExamId),
@@ -3307,43 +3084,30 @@
   }
 
   function getHomeworkAnswerQuestionEid(questionVm, questionInfo = null) {
-    return normalizeVideoId(
-      questionVm?.dataArr?.eid
-      || questionVm?.data?.eid
-      || questionVm?.questionData?.eid
-      || questionVm?.eid
-      || questionInfo?.questionId,
-    );
+    return normalizeVideoId(questionVm?.dataArr?.eid ?? questionInfo?.questionId);
+  }
+
+  function getRawQuestionOptions(questionVm) {
+    return Array.isArray(questionVm?.dataArr?.questionOptions)
+      ? questionVm.dataArr.questionOptions
+      : [];
+  }
+
+  function mapRawOptionToLabeled(option, index) {
+    const rawLabel = normalizeText(option?.sort || "").toUpperCase();
+    const label = /^[A-H]$/.test(rawLabel) ? rawLabel : getLetterByIndex(index);
+    const text = normalizeAnswerText(toPlainText(option?.content || label)) || label;
+    return { label, text };
   }
 
   function getHomeworkAnswerVmOptions(questionVm) {
-    const rawOptions = Array.isArray(questionVm?.dataArr?.questionOptions)
-      ? questionVm.dataArr.questionOptions
-      : Array.isArray(questionVm?.data?.questionOptions)
-        ? questionVm.data.questionOptions
-        : [];
+    const rawOptions = getRawQuestionOptions(questionVm);
 
     return rawOptions.map((option, index) => {
-      const rawLabel = normalizeText(
-        option?.sort
-        || option?.optionSort
-        || option?.prefix
-        || option?.label
-        || option?.optionNo
-        || "",
-      ).toUpperCase();
-      const label = /^[A-H]$/.test(rawLabel) ? rawLabel : getLetterByIndex(index);
-      const text = normalizeAnswerText(toPlainText(
-        option?.content
-        || option?.optionContent
-        || option?.name
-        || option?.text
-        || option?.title
-        || label,
-      )) || label;
+      const { label, text } = mapRawOptionToLabeled(option, index);
       return {
         raw: option,
-        id: option?.id ?? option?.optionId ?? label,
+        id: option?.id ?? label,
         label,
         text,
         normalizedText: normalizeAnswerText(text) || label,
@@ -3369,11 +3133,7 @@
   }
 
   function syncHomeworkAnswerVmFlags(questionVm, selectedTargets = []) {
-    const questionOptions = Array.isArray(questionVm?.dataArr?.questionOptions)
-      ? questionVm.dataArr.questionOptions
-      : Array.isArray(questionVm?.data?.questionOptions)
-        ? questionVm.data.questionOptions
-        : [];
+    const questionOptions = getRawQuestionOptions(questionVm);
     if (!questionOptions.length) return false;
 
     const selectedIdKeys = new Set(selectedTargets.map((target) => normalizeVideoId(target?.id) || String(target?.id ?? "")));
@@ -3388,12 +3148,8 @@
     return changed;
   }
 
-  function normalizeHomeworkAnswerId(value) {
-    return normalizeVideoId(value) || String(value ?? "");
-  }
-
   function uniqHomeworkAnswerIds(values = []) {
-    return [...new Set(values.map((value) => normalizeHomeworkAnswerId(value)).filter(Boolean))].sort();
+    return [...new Set(values.map((value) => normalizeVideoId(value) || String(value ?? "")).filter(Boolean))].sort();
   }
 
   function areHomeworkAnswerIdListsEqual(left = [], right = []) {
@@ -3405,11 +3161,7 @@
   }
 
   function getHomeworkAnswerVmSelectedIds(questionVm) {
-    const questionOptions = Array.isArray(questionVm?.dataArr?.questionOptions)
-      ? questionVm.dataArr.questionOptions
-      : Array.isArray(questionVm?.data?.questionOptions)
-        ? questionVm.data.questionOptions
-        : [];
+    const questionOptions = getRawQuestionOptions(questionVm);
     return uniqHomeworkAnswerIds(
       questionOptions
         .filter((option) => Boolean(option?.flagChecked))
@@ -3417,9 +3169,6 @@
     );
   }
 
-  function hasPreparedHomeworkChoiceAnswerData(questionVm) {
-    return Boolean(questionVm?.answerDataTemp);
-  }
 
   function hasPreparedHomeworkTextAnswerData(questionVm, childEid = "") {
     const answerDataTemp = questionVm?.answerDataTemp;
@@ -3431,20 +3180,27 @@
     return Object.keys(answerDataTemp).length > 0;
   }
 
-  function isHomeworkChoiceAnswerVmSatisfied(pageVm, questionInfo, answers = []) {
-    const questionVm = getCurrentHomeworkAnswerVm(pageVm);
-    if (!questionVm || !questionInfo?.options?.length) return false;
+  function resolveHomeworkChoiceContext(questionVm, questionInfo, answers) {
+    const rawOptions = getRawQuestionOptions(questionVm);
     const targetOptions = findHomeworkAnswerVmTargets(questionVm, questionInfo, answers);
-    if (!targetOptions.length) return false;
-    const expectedSelectedIds = uniqHomeworkAnswerIds(targetOptions.map((option) => option.id));
+    const targetIds = uniqHomeworkAnswerIds(targetOptions.map((option) => option.id));
     const currentSelectedIds = uniqHomeworkAnswerIds(
       Array.isArray(questionVm?.checkboxVal) && questionVm.checkboxVal.length
         ? questionVm.checkboxVal
         : getHomeworkAnswerVmSelectedIds(questionVm),
     );
+    const sameSelection = areHomeworkAnswerIdListsEqual(currentSelectedIds, targetIds);
+    return { rawOptions, targetOptions, targetIds, currentSelectedIds, sameSelection };
+  }
+
+  function isHomeworkChoiceAnswerVmSatisfied(pageVm, questionInfo, answers = []) {
+    const questionVm = getCurrentHomeworkAnswerVm(pageVm);
+    if (!questionVm || !questionInfo?.options?.length) return false;
+    const { targetOptions, currentSelectedIds, sameSelection } = resolveHomeworkChoiceContext(questionVm, questionInfo, answers);
+    if (!targetOptions.length) return false;
     return (
-      areHomeworkAnswerIdListsEqual(currentSelectedIds, expectedSelectedIds)
-      && hasPreparedHomeworkChoiceAnswerData(questionVm)
+      sameSelection
+      && Boolean(questionVm?.answerDataTemp)
     );
   }
 
@@ -3454,7 +3210,7 @@
     const normalizedAnswers = answers.map((item) => normalizeText(item)).filter(Boolean);
     if (!normalizedAnswers.length) return false;
 
-    if (Array.isArray(questionVm?.data?.questionChildrens) && questionVm.data.questionChildrens.length) {
+    if (Array.isArray(questionVm?.data?.questionChildrens) && questionVm.data.questionChildrens.length) { // (sic) platform typo: questionChildrens
       for (let index = 0; index < questionVm.data.questionChildrens.length; index += 1) {
         const child = questionVm.data.questionChildrens[index];
         const nextValue = normalizedAnswers[Math.min(index, normalizedAnswers.length - 1)] || normalizedAnswers[0];
@@ -3489,25 +3245,18 @@
     const questionVm = getCurrentHomeworkAnswerVm(pageVm);
     if (!questionVm || questionVm.disabledFlag) return false;
 
-    const targetOptions = findHomeworkAnswerVmTargets(questionVm, questionInfo, answers);
+    const { targetOptions, targetIds, currentSelectedIds, sameSelection } = resolveHomeworkChoiceContext(questionVm, questionInfo, answers);
     if (!targetOptions.length) return false;
 
     const eid = getHomeworkAnswerQuestionEid(questionVm, questionInfo);
     const selectedIds = [...new Set(targetOptions.map((option) => option.id).filter((id) => id !== undefined && id !== null && String(id) !== ""))];
     if (!selectedIds.length) return false;
 
-    const expectedSelectedIds = uniqHomeworkAnswerIds(selectedIds);
-    const currentSelectedIds = uniqHomeworkAnswerIds(
-      Array.isArray(questionVm?.checkboxVal) && questionVm.checkboxVal.length
-        ? questionVm.checkboxVal
-        : getHomeworkAnswerVmSelectedIds(questionVm),
-    );
-    const hadPreparedAnswerData = hasPreparedHomeworkChoiceAnswerData(questionVm);
-    const sameSelection = areHomeworkAnswerIdListsEqual(currentSelectedIds, expectedSelectedIds);
+    const hadPreparedAnswerData = Boolean(questionVm?.answerDataTemp);
     const changedFlags = syncHomeworkAnswerVmFlags(questionVm, targetOptions);
     let applied = false;
 
-    if (typeof questionVm.UpdataValue === "function" && Array.isArray(questionVm.checkboxVal) && (!sameSelection || !hadPreparedAnswerData || changedFlags)) {
+    if (typeof questionVm.UpdataValue === "function" && Array.isArray(questionVm.checkboxVal) && (!sameSelection || !hadPreparedAnswerData || changedFlags)) { // (sic) platform typo: UpdataValue
       questionVm.checkboxVal = selectedIds.slice();
       applied = safeCall(() => {
         questionVm.UpdataValue(selectedIds, eid);
@@ -3528,7 +3277,7 @@
       }
     }
 
-    const hasPreparedAnswerData = hasPreparedHomeworkChoiceAnswerData(questionVm);
+    const hasPreparedAnswerData = Boolean(questionVm?.answerDataTemp);
     if (changedFlags || applied) {
       safeCall(() => questionVm.$forceUpdate?.());
     }
@@ -3612,7 +3361,7 @@
       if (total > 0) return total;
     }
 
-    if (Array.isArray(pageVm?.alllQuestionTest) && pageVm.alllQuestionTest.length) {
+    if (Array.isArray(pageVm?.alllQuestionTest) && pageVm.alllQuestionTest.length) { // (sic) platform typo: alllQuestionTest
       return pageVm.alllQuestionTest.length;
     }
 
@@ -3634,34 +3383,17 @@
   function patchHomeworkExamVm(vm) {
     if (!vm || vm.__awt_exam_patched__) return;
 
-    if (typeof vm.hijackAllEls === "function" && !vm.hijackAllEls[WRAP_MARK]) {
-      vm.hijackAllEls = wrapVmMethod(vm, vm.hijackAllEls, (original) => function (...args) {
-        if (state.config.blockDetectApis) {
-          logDebug("detect", "homework hijackAllEls blocked");
-          return true;
-        }
-        return original(...args);
-      });
-    }
-
-    if (typeof vm.checkoutNotTrustScript === "function" && !vm.checkoutNotTrustScript[WRAP_MARK]) {
-      vm.checkoutNotTrustScript = wrapVmMethod(vm, vm.checkoutNotTrustScript, (original) => function (...args) {
-        if (state.config.blockDetectApis) {
-          clearInterval(this.checkTimer);
-          return true;
-        }
-        return original(...args);
-      });
-    }
-
-    if (typeof vm.checkout === "function" && !vm.checkout[WRAP_MARK]) {
-      vm.checkout = wrapVmMethod(vm, vm.checkout, (original) => function (...args) {
-        if (state.config.blockDetectApis) {
-          clearInterval(this.checkTimer);
-          return true;
-        }
-        return original(...args);
-      });
+    for (const methodName of ["hijackAllEls", "checkoutNotTrustScript", "checkout"]) {
+      if (typeof vm[methodName] === "function" && !vm[methodName][WRAP_MARK]) {
+        vm[methodName] = wrapVmMethod(vm, vm[methodName], (original) => function (...args) {
+          if (state.config.blockDetectApis) {
+            if (methodName !== "hijackAllEls") clearInterval(this.checkTimer);
+            logDebug("detect", `homework ${methodName} blocked`);
+            return true;
+          }
+          return original(...args);
+        });
+      }
     }
 
     if (typeof vm.collectLog === "function" && !vm.collectLog[WRAP_MARK]) {
@@ -3685,9 +3417,9 @@
 
     if (typeof vm.$confirm === "function" && !vm.$confirm[WRAP_MARK]) {
       vm.$confirm = wrapVmMethod(vm, vm.$confirm, (original) => function (message, title, options, ...rest) {
-        if (state.exam.pendingTemporarySaveClose && isTemporarySaveConfirmMessage(message)) {
+        if (state.exam.pendingSave.kind === "temporary" && isTemporarySaveConfirmMessage(message)) {
           logSuccess("exam", "regular exam temporary save confirm auto accepted", {
-            questionSignature: state.exam.pendingTemporarySaveSignature || "",
+            questionSignature: state.exam.pendingSave.signature || "",
           });
           return Promise.resolve({
             action: "confirm",
@@ -3706,8 +3438,8 @@
     if (typeof vm.saveSuccessChild === "function" && !vm.saveSuccessChild[WRAP_MARK]) {
       vm.saveSuccessChild = wrapVmMethod(vm, vm.saveSuccessChild, (original) => function (...args) {
         const saveMode = Number(args[1] || 0);
-        const shouldChainTemporarySave = state.exam.pendingLastQuestionSaveClose && saveMode === 3;
-        const questionSignature = state.exam.pendingLastQuestionSaveSignature || state.exam.lastSignature || "";
+        const shouldChainTemporarySave = state.exam.pendingSave.kind === "lastQuestion" && saveMode === 3;
+        const questionSignature = state.exam.pendingSave.signature || state.exam.lastSignature || "";
         const result = original(...args);
 
         if (saveMode === 1) {
@@ -3731,12 +3463,12 @@
           logSuccess("exam", "regular exam last question save completed", {
             questionSignature,
           });
-          resetExamLastQuestionSaveState();
-          if (!state.exam.pendingTemporarySaveClose) {
-            const triggered = triggerHomeworkExamTemporarySave(this, {
+          resetExamSaveState();
+          if (state.exam.pendingSave.kind !== "temporary") {
+            const triggered = triggerExamSave(this, {
               signature: questionSignature,
               text: "",
-            });
+            }, "temporary");
             if (!triggered) {
               logWarn("exam", "regular exam last question close chain failed after save", {
                 questionSignature,
@@ -3765,10 +3497,10 @@
     if (typeof vm.saveSuccess === "function" && !vm.saveSuccess[WRAP_MARK]) {
       vm.saveSuccess = wrapVmMethod(vm, vm.saveSuccess, (original) => function (...args) {
         const shouldRequestCloseFallback = (
-          state.exam.pendingTemporarySaveClose
+          state.exam.pendingSave.kind === "temporary"
           || hasPendingHomeworkExamCloseRequest(this)
         );
-        if (state.exam.pendingTemporarySaveClose) {
+        if (state.exam.pendingSave.kind === "temporary") {
           const persistedCompletion = persistStudentExamSharedCompletion(this, {
             source: "gm-shared:temporary-save",
             reason: "temporarySaveSuccess",
@@ -3781,13 +3513,13 @@
             lastHeartbeatAt: state.exam.lastSessionHeartbeatAt,
           });
           logSuccess("exam", "regular exam temporary save completed", {
-            questionSignature: state.exam.pendingTemporarySaveSignature || "",
+            questionSignature: state.exam.pendingSave.signature || "",
             persistedCompletion,
           });
-          resetExamTemporarySaveState();
+          resetExamSaveState();
         }
-        if (state.exam.pendingLastQuestionSaveClose) {
-          resetExamLastQuestionSaveState();
+        if (state.exam.pendingSave.kind === "lastQuestion") {
+          resetExamSaveState();
         }
         // When auto-close is disabled, temporarily block window.close so the
         // platform's original saveSuccess cannot close the popup window.
@@ -3801,7 +3533,9 @@
               return false;
             });
             closeGuardInstalled = true;
-          } catch (_) { /* non-configurable — rare */ }
+          } catch (_) {
+            logDebug("exam", "PAGE.close guard install failed (non-configurable)");
+          }
         }
         const result = original(...args);
         if (closeGuardInstalled && savedClose) {
@@ -3856,9 +3590,7 @@
     const route = pageVm.$route || rootVm?.$route || null;
     const routeName = normalizeText(route?.name);
     const routeParams = buildExamRouteParams(route);
-    const currentSession = state.exam.session && typeof state.exam.session === "object"
-      ? state.exam.session
-      : {};
+    const currentSession = getSession();
     const currentStudentExamId = normalizeVideoId(
       routeParams.stuExamId
       || currentSession.studentExamId
@@ -3884,7 +3616,7 @@
       )
     );
     if (preserveClosedSession) {
-      return currentSession;
+      return currentSession; // @type-safety: returns ExamSession, not boolean
     }
     const routeChanged = JSON.stringify(state.exam.routeParams || {}) !== JSON.stringify(routeParams || {});
     const captureChanged = (
@@ -3934,8 +3666,7 @@
     }
 
     if (captureChanged) {
-      resetExamLastQuestionSaveState();
-      resetExamTemporarySaveState();
+      resetExamSaveState();
       if (!preserveClosingSession) {
         resetHomeworkExamCloseRequestState();
       }
@@ -4028,13 +3759,7 @@
   function extractExamQuestionTextFromDto(questionDto) {
     return normalizeQuestionText(toPlainText(
       questionDto?.name
-      || questionDto?.questionName
       || questionDto?.content
-      || questionDto?.questionTitle
-      || questionDto?.title
-      || questionDto?.stem
-      || questionDto?.subject
-      || questionDto?.description
       || "",
     ));
   }
@@ -4042,28 +3767,10 @@
   function extractExamOptionsFromDto(questionDto) {
     const rawOptions = Array.isArray(questionDto?.questionOptions)
       ? questionDto.questionOptions
-      : Array.isArray(questionDto?.options)
-        ? questionDto.options
-        : [];
+      : [];
 
     return rawOptions.map((option, index) => {
-      const rawLabel = normalizeText(
-        option?.sort
-        || option?.optionSort
-        || option?.prefix
-        || option?.label
-        || option?.optionNo
-        || "",
-      ).toUpperCase();
-      const label = /^[A-H]$/.test(rawLabel) ? rawLabel : getLetterByIndex(index);
-      const text = normalizeAnswerText(toPlainText(
-        option?.content
-        || option?.optionContent
-        || option?.name
-        || option?.text
-        || option?.title
-        || label,
-      )) || label;
+      const { label, text } = mapRawOptionToLabeled(option, index);
       return {
         label,
         text,
@@ -4164,7 +3871,7 @@
   }
 
   function buildExamAnswerRequestKey(questionEntries) {
-    const session = state.exam.session && typeof state.exam.session === "object" ? state.exam.session : {};
+    const session = getSession();
     return computeStableHash(JSON.stringify({
       host: PAGE_HOST,
       recruitId: session.recruitId || "",
@@ -4228,27 +3935,15 @@
     return null;
   }
 
-  function extractChatCompletionContent(payload) {
-    const choice = Array.isArray(payload?.choices) ? payload.choices[0] : null;
-    let content = choice?.message?.content;
-    if (Array.isArray(content)) {
-      content = content.map((item) => {
-        if (typeof item === "string") return item;
-        if (typeof item?.text === "string") return item.text;
-        if (typeof item?.content === "string") return item.content;
-        return "";
-      }).filter(Boolean).join("\n");
-    }
-    if (typeof content === "string" && content.trim()) {
-      return content;
-    }
-    if (typeof choice?.text === "string" && choice.text.trim()) {
-      return choice.text;
-    }
-    if (typeof payload?.output_text === "string" && payload.output_text.trim()) {
-      return payload.output_text;
-    }
-    return "";
+  function extractGeminiContent(payload) {
+    const candidate = Array.isArray(payload?.candidates) ? payload.candidates[0] : null;
+    const parts = candidate?.content?.parts;
+    if (!Array.isArray(parts)) return "";
+    return parts.map((part) => {
+      if (typeof part === "string") return part;
+      if (typeof part?.text === "string") return part.text;
+      return "";
+    }).filter(Boolean).join("\n");
   }
 
   function extractAnswerValuesFromLlmItem(item) {
@@ -4313,7 +4008,7 @@
 
       const answers = extractAnswerValuesFromLlmItem(item);
       if (!answers.length) continue;
-      if (storeExamAnswer(entry, answers, "llm")) {
+      if (storeExamAnswer(entry, answers)) {
         storedCount += 1;
       }
     }
@@ -4321,46 +4016,78 @@
     return storedCount;
   }
 
-  function buildExamLlmMessages(questionEntries) {
-    const session = state.exam.session && typeof state.exam.session === "object" ? state.exam.session : {};
-    return [
-      {
-        role: "system",
-        content: [
-          "你是课程考试答题助手。",
-          "你必须只返回 JSON，不要 Markdown，不要代码块，不要解释。",
-          "返回格式固定为 {\"answers\":[{\"questionId\":\"...\",\"signature\":\"...\",\"answerLabels\":[\"A\"],\"answerTexts\":[\"选项文本\"],\"textAnswers\":[\"填空答案\"]}] }。",
-          "单选或多选优先填写 answerLabels；如果题目是填空、问答、简答，请填写 textAnswers。",
-          "questionId 和 signature 必须逐字照抄输入。",
-        ].join("\n"),
+  function buildGeminiRequestBody(questionEntries) {
+    const session = getSession();
+    const userContent = JSON.stringify({
+      task: "请一次性解答整张平时测试试卷，利用搜索查找准确答案，并严格按指定 JSON 返回。",
+      session: {
+        recruitId: session.recruitId || "",
+        examId: session.examId || "",
+        studentExamId: session.studentExamId || "",
       },
-      {
-        role: "user",
-        content: JSON.stringify({
-          task: "请一次性解答整张平时测试试卷，并严格按指定 JSON 返回。",
-          session: {
-            recruitId: session.recruitId || "",
-            examId: session.examId || "",
-            studentExamId: session.studentExamId || "",
+      questions: questionEntries.map((entry) => ({
+        questionId: entry.questionId || "",
+        signature: entry.signature,
+        question: entry.text,
+        type: entry.textInputCount > 0 ? "text" : entry.isMulti ? "multiple-choice" : "single-choice",
+        textInputCount: entry.textInputCount || 0,
+        options: entry.options.map((option) => ({
+          label: option.label,
+          text: option.text,
+        })),
+      })),
+    }, null, 2);
+
+    return {
+      systemInstruction: {
+        parts: [
+          {
+            text: [
+              "你是课程考试答题助手。请利用联网搜索能力查找题目答案。",
+              "你必须只返回 JSON，不要 Markdown，不要代码块，不要解释。",
+              "返回格式固定为 {\"answers\":[{\"questionId\":\"...\",\"signature\":\"...\",\"answerLabels\":[\"A\"],\"answerTexts\":[\"选项文本\"],\"textAnswers\":[\"填空答案\"]}] }。",
+              "单选或多选优先填写 answerLabels；如果题目是填空、问答、简答，请填写 textAnswers。",
+              "questionId 和 signature 必须逐字照抄输入。",
+            ].join("\n"),
           },
-          questions: questionEntries.map((entry) => ({
-            questionId: entry.questionId || "",
-            signature: entry.signature,
-            question: entry.text,
-            type: entry.textInputCount > 0 ? "text" : entry.isMulti ? "multiple-choice" : "single-choice",
-            textInputCount: entry.textInputCount || 0,
-            options: entry.options.map((option) => ({
-              label: option.label,
-              text: option.text,
-            })),
-          })),
-        }, null, 2),
+        ],
       },
-    ];
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: userContent }],
+        },
+      ],
+      tools: [{ google_search: {} }],
+      generationConfig: {
+        temperature: 0.2,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "OBJECT",
+          properties: {
+            answers: {
+              type: "ARRAY",
+              items: {
+                type: "OBJECT",
+                properties: {
+                  questionId: { type: "STRING" },
+                  signature: { type: "STRING" },
+                  answerLabels: { type: "ARRAY", items: { type: "STRING" } },
+                  answerTexts: { type: "ARRAY", items: { type: "STRING" } },
+                  textAnswers: { type: "ARRAY", items: { type: "STRING" } },
+                },
+                required: ["questionId", "signature"],
+              },
+            },
+          },
+          required: ["answers"],
+        },
+      },
+    };
   }
 
   async function requestExamAnswersFromLlm(questionEntries) {
-    const endpoint = buildExamLlmApiEndpoint(state.exam.llm.apiBaseUrl);
+    const endpoint = buildExamLlmApiEndpoint(state.exam.llm.apiBaseUrl, state.exam.llm.model, state.exam.llm.apiKey);
     if (!endpoint) {
       throw new Error("missing exam llm endpoint");
     }
@@ -4375,7 +4102,7 @@
         logWarn("exam", `llm request attempt ${attempt}/${maxRetries} failed`, {
           attempt,
           error: normalizeText(error?.message || error) || "unknown",
-          endpoint: shortenHost(endpoint),
+          endpoint: shortenHost(state.exam.llm.apiBaseUrl),
           model: state.exam.llm.model,
         });
         if (attempt < maxRetries) {
@@ -4395,14 +4122,8 @@
       timeout: 90000,
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${state.exam.llm.apiKey}`,
       },
-      data: JSON.stringify({
-        model: state.exam.llm.model,
-        temperature: 0.2,
-        stream: false,
-        messages: buildExamLlmMessages(questionEntries),
-      }),
+      data: JSON.stringify(buildGeminiRequestBody(questionEntries)),
     });
 
     const status = Number(response?.status || 0);
@@ -4434,7 +4155,7 @@
       throw new Error("llm response body is not valid json");
     }
 
-    const content = extractChatCompletionContent(outerPayload);
+    const content = extractGeminiContent(outerPayload);
     const parsedPayload = extractJsonPayloadFromText(content);
     if (!parsedPayload || typeof parsedPayload !== "object") {
       logWarn("exam", "llm response content parse failed", {
@@ -4482,9 +4203,9 @@
     state.exam.llm.resolvedAt = 0;
     state.exam.llm.retryCount = 0;
 
-    logSuccess("exam", "regular exam llm request started", {
+    logDebug("exam", "regular exam llm request started", {
       questionCount: questionEntries.length,
-      endpoint: shortenHost(buildExamLlmApiEndpoint(state.exam.llm.apiBaseUrl)),
+      endpoint: shortenHost(state.exam.llm.apiBaseUrl),
       model: state.exam.llm.model,
     });
 
@@ -4504,7 +4225,7 @@
       logWarn("exam", "regular exam llm request failed (all retries exhausted)", {
         error: state.exam.llm.requestError,
         retryCount: state.exam.llm.retryCount,
-        endpoint: shortenHost(buildExamLlmApiEndpoint(state.exam.llm.apiBaseUrl)),
+        endpoint: shortenHost(state.exam.llm.apiBaseUrl),
         model: state.exam.llm.model,
         stack: error?.stack ? String(error.stack).slice(0, 300) : "",
       });
@@ -4788,10 +4509,6 @@
     };
   }
 
-  function isExamAnswerAutomationEnabled() {
-    return isExamLlmConfigured();
-  }
-
   function buildExamAnswerTodoTemplate(questionInfo) {
     if (!questionInfo) return null;
     return {
@@ -4809,7 +4526,7 @@
   function resolveQuestionTargets(questionInfo) {
     const explicitAnswers = questionInfo.explicitAnswers || [];
     if (explicitAnswers.length) {
-      storeExamAnswer(questionInfo, explicitAnswers, "page");
+      storeExamAnswer(questionInfo, explicitAnswers);
       return {
         answers: explicitAnswers,
         source: "page",
@@ -4826,7 +4543,7 @@
       };
     }
 
-    if (!isExamAnswerAutomationEnabled()) {
+    if (!isExamLlmConfigured()) {
       return {
         answers: [],
         source: "external-llm-not-ready",
@@ -5009,74 +4726,41 @@
     ], force ? "regular exam unresolved question skipped" : "regular exam action clicked");
   }
 
-  function getCurrentExamQuestionResolvedAnswers(questionInfo) {
-    if (!questionInfo || typeof questionInfo !== "object") return [];
-    if (Array.isArray(questionInfo.explicitAnswers) && questionInfo.explicitAnswers.length) {
-      return [...questionInfo.explicitAnswers];
-    }
-    return lookupExamAnswer(questionInfo);
-  }
+  function triggerExamSave(pageVm, questionInfo, kind) {
+    if (!isHomeworkExamVm(pageVm)) return false;
+    if (kind === "temporary" && typeof pageVm.beforeTemporarySave !== "function") return false;
+    if (kind === "lastQuestion" && typeof pageVm.switchQuestion !== "function") return false;
 
-  function triggerHomeworkExamTemporarySave(pageVm, questionInfo) {
-    if (!isHomeworkExamVm(pageVm) || typeof pageVm.beforeTemporarySave !== "function") return false;
-
-    if (state.exam.pendingTemporarySaveClose) {
-      if (!isDelayElapsed(state.exam.lastTemporarySaveAt, now(), 15000)) return false;
-      logWarn("exam", "regular exam temporary save timed out, retrying", {
+    if (state.exam.pendingSave.kind === kind) {
+      if (!isDelayElapsed(state.exam.pendingSave.startedAt, now(), 15000)) return false;
+      logWarn("exam", `regular exam ${kind} save timed out, retrying`, {
         question: questionInfo?.text || "",
       });
-      resetExamTemporarySaveState();
+      resetExamSaveState();
     }
 
-    state.exam.pendingTemporarySaveClose = true;
-    state.exam.pendingTemporarySaveSignature = questionInfo?.signature || "";
-    state.exam.lastTemporarySaveAt = now();
-
-    const triggered = safeCall(() => {
-      pageVm.beforeTemporarySave();
-      return true;
-    }, false);
-    if (!triggered) {
-      resetExamTemporarySaveState();
-      return false;
-    }
-
-    state.exam.lastAdvancedAt = state.exam.lastTemporarySaveAt;
-    logSuccess("exam", "regular exam last question temporary save triggered", {
-      currentQuestionIndex: Number(pageVm.currentQuestionIndex || 0),
-      question: questionInfo?.text || "",
-    });
-    return true;
-  }
-
-  function triggerHomeworkExamLastQuestionSave(pageVm, questionInfo) {
-    if (!isHomeworkExamVm(pageVm) || typeof pageVm.switchQuestion !== "function") return false;
-
-    if (state.exam.pendingLastQuestionSaveClose) {
-      if (!isDelayElapsed(state.exam.lastLastQuestionSaveAt, now(), 15000)) return false;
-      logWarn("exam", "regular exam last question save timed out, retrying", {
-        question: questionInfo?.text || "",
-      });
-      resetExamLastQuestionSaveState();
-    }
-
-    state.exam.pendingLastQuestionSaveClose = true;
-    state.exam.pendingLastQuestionSaveSignature = questionInfo?.signature || "";
-    state.exam.lastLastQuestionSaveAt = now();
+    state.exam.pendingSave = {
+      kind,
+      signature: questionInfo?.signature || "",
+      startedAt: now(),
+    };
 
     const currentQuestionIndex = Number(pageVm.currentQuestionIndex || 0);
     const triggered = safeCall(() => {
-      pageVm.switchQuestion(0, 3);
+      if (kind === "temporary") {
+        pageVm.beforeTemporarySave();
+      } else {
+        pageVm.switchQuestion(0, 3);
+      }
       return true;
     }, false);
     if (!triggered) {
-      resetExamLastQuestionSaveState();
+      resetExamSaveState();
       return false;
     }
 
-    state.exam.lastAdvancedAt = state.exam.lastLastQuestionSaveAt;
-    logSuccess("exam", "regular exam last question save triggered", {
-      driver: "page-vm",
+    state.exam.lastAdvancedAt = state.exam.pendingSave.startedAt;
+    logSuccess("exam", `regular exam ${kind} save triggered`, {
       currentQuestionIndex,
       question: questionInfo?.text || "",
     });
@@ -5089,7 +4773,9 @@
     if (state.exam.unresolvedSignature === questionInfo.signature) return false;
     if (state.exam.lastSignature === questionInfo.signature && !isDelayElapsed(state.exam.lastAnsweredAt)) return false;
 
-    const resolvedAnswers = getCurrentExamQuestionResolvedAnswers(questionInfo);
+    const resolvedAnswers = (Array.isArray(questionInfo.explicitAnswers) && questionInfo.explicitAnswers.length)
+      ? [...questionInfo.explicitAnswers]
+      : lookupExamAnswer(questionInfo);
     if (!resolvedAnswers.length) return false;
 
     const hasRecordedAnswer = state.exam.lastSignature === questionInfo.signature;
@@ -5102,38 +4788,23 @@
       return false;
     }
 
-    if (state.exam.pendingTemporarySaveClose) {
-      if (!isDelayElapsed(state.exam.lastTemporarySaveAt, now(), 15000)) return false;
-      logWarn("exam", "regular exam temporary save timed out, retrying", {
-        question: questionInfo.text,
-      });
-      resetExamTemporarySaveState();
-    }
-
-    if (state.exam.pendingLastQuestionSaveClose) {
-      if (!isDelayElapsed(state.exam.lastLastQuestionSaveAt, now(), 15000)) return false;
-      logWarn("exam", "regular exam last question save timed out, retrying", {
-        question: questionInfo.text,
-      });
-      resetExamLastQuestionSaveState();
-    }
-
-    return triggerHomeworkExamLastQuestionSave(pageVm, questionInfo);
+    return triggerExamSave(pageVm, questionInfo, "lastQuestion");
   }
 
   function restoreExamAnsweringMode(questionInfo) {
     if (state.exam.recoveredThisPage) return false;
     if (!questionInfo || !questionInfo.signature) return false;
 
+    const ts = now();
     state.exam.recoveredThisPage = true;
-    state.exam.lastSessionHeartbeatAt = now();
+    state.exam.lastSessionHeartbeatAt = ts;
     markExamSessionLaunchState("active", {
-      ...(state.exam.session && typeof state.exam.session === "object" ? state.exam.session : {}),
+      ...(getSession()),
       host: PAGE_HOST,
       routeName: state.exam.routeName || "doHomework",
       captureMode: state.exam.captureMode || "fallback-dom",
       recoverMode: "exam-page-runtime",
-      recoveredAt: now(),
+      recoveredAt: ts,
       lastHeartbeatAt: state.exam.lastSessionHeartbeatAt,
     });
     logSuccess("exam", "regular exam runtime recovered", {
@@ -5188,7 +4859,7 @@
     }
 
     if (questionInfo.explicitAnswers.length) {
-      storeExamAnswer(questionInfo, questionInfo.explicitAnswers, "page");
+      storeExamAnswer(questionInfo, questionInfo.explicitAnswers);
     }
 
     // Hard gate: if the exam is already complete, do NOT request AI answers.
@@ -5277,12 +4948,7 @@
       return true;
     }
 
-    if (state.exam.pendingLastQuestionSaveClose) {
-      updateUi("已完成最后一题，正在暂存并关闭页面");
-      return false;
-    }
-
-    if (state.exam.pendingTemporarySaveClose) {
+    if (state.exam.pendingSave.kind) {
       updateUi("已完成最后一题，正在暂存并关闭页面");
       return false;
     }
@@ -5313,6 +4979,10 @@
       return false;
     }
     if (!isExamLlmConfigured()) {
+      if (!state.logKeys.has("exam-launch-llm-missing-toast")) {
+        state.logKeys.add("exam-launch-llm-missing-toast");
+        toast("考试答题 AI 未配置，请在 Tampermonkey 菜单中设置 API Key 和 Model");
+      }
       logOnce("exam-launch-llm-missing", "warn", "exam", "skip regular exam launch: AI config incomplete", {
         endpoint: shortenHost(state.exam.llm.apiBaseUrl),
         model: state.exam.llm.model || "",
@@ -5538,12 +5208,8 @@
   }
 
   function getChapterLaunchKey(chapter, chapterIndex = -1) {
-    const chapterId = normalizeVideoId(
-      chapter?.id
-      || chapter?.chapterId
-      || chapter?.chapterID
-      || chapter?.recruitChapterId,
-    ) || `chapter-index-${Number.isFinite(chapterIndex) ? chapterIndex : -1}`;
+    const chapterId = normalizeVideoId(chapter?.id)
+      || `chapter-index-${Number.isFinite(chapterIndex) ? chapterIndex : -1}`;
     const chapterName = getExamLaunchChapterName(chapter) || chapterId;
     return `${chapterId}::${chapterName}`;
   }
@@ -5594,13 +5260,7 @@
   }
 
   function getExamLaunchChapterName(chapter) {
-    return normalizeText(
-      chapter?.name
-      || chapter?.chapterName
-      || chapter?.title
-      || chapter?.lessonName
-      || "",
-    );
+    return normalizeText(chapter?.name || "");
   }
 
   function buildLessonLaunchProgressPayload(lesson) {
@@ -5713,18 +5373,13 @@
     const studentExamDto = extractStudentExamDto(lessonLike);
     if (!studentExamDto) return null;
 
-    const recordedCompletion = getStudentExamRecordedCompletionFromRelatedSources(lessonLike, entry);
-    const recordedComplete = isStudentExamRecordedComplete(lessonLike, entry);
+    const recordedComplete = isExamComplete(lessonLike, entry);
     const examState = Number(studentExamDto?.state || 0);
 
     let pending;
     if (state.config.autoSubmitCompletedExam) {
-      // When auto-submit is on, the exam gets submitted (state → 3) after
-      // completion.  Use the real server state as the single source of truth.
       pending = examState !== 3 && examState !== 4;
     } else {
-      // When auto-submit is off, the exam stays at state 1/2 forever.
-      // Fall back to recorded completion (answered >= total from GM storage).
       const isTerminalExamState = examState === 3 || examState === 4
         || (examState === 2 && recordedComplete);
       pending = !isTerminalExamState && !recordedComplete;
@@ -5792,12 +5447,9 @@
 
   function buildExamLaunchCandidatePayload(candidate) {
     if (!candidate || typeof candidate !== "object") return null;
-    const recordedCompletion = Object.prototype.hasOwnProperty.call(candidate, "recordedCompletion")
-      ? candidate.recordedCompletion
-      : getStudentExamRecordedCompletionFromRelatedSources(candidate.lessonLike, candidate.entry);
-    const recordedComplete = typeof candidate.recordedComplete === "boolean"
+    const recordedComplete = Object.prototype.hasOwnProperty.call(candidate, "recordedComplete")
       ? candidate.recordedComplete
-      : isStudentExamRecordedComplete(candidate.lessonLike, candidate.entry);
+      : isExamComplete(candidate.lessonLike, candidate.entry);
     const sourceVariants = Array.isArray(candidate.sourceVariants)
       ? candidate.sourceVariants.map(buildExamLaunchSourcePayload).filter(Boolean)
       : [];
@@ -5818,10 +5470,6 @@
       alreadyLaunchedThisSession: Boolean(
         candidate.launchKey && state.exam.launchedSessionExamKeys[candidate.launchKey]
       ),
-      recordedCompletion,
-      recordedCompletionSource: normalizeText(recordedCompletion?.source || ""),
-      recordedCompletionReason: normalizeText(recordedCompletion?.reason || ""),
-      recordedCompletionUpdatedAt: Number(recordedCompletion?.updatedAt || 0),
       recordedComplete,
       sourceVariants,
       progress: buildLessonLaunchProgressPayload(candidate.entry?.progressTarget || candidate.lessonLike),
@@ -5845,40 +5493,12 @@
     if (!entries.length) return [];
 
     const currentEntry = findCurrentLessonEntry(vm);
-    const chapterEntriesMap = new Map();
-    entries.forEach((entry) => {
-      if (!entry?.chapterKey) return;
-      if (!chapterEntriesMap.has(entry.chapterKey)) {
-        chapterEntriesMap.set(entry.chapterKey, []);
-      }
-      chapterEntriesMap.get(entry.chapterKey).push(entry);
-    });
-
-    const chapterSummaries = Array.from(chapterEntriesMap.entries()).map(([chapterKey, chapterEntries]) => {
-      const chapter = chapterEntries[0]?.chapter || null;
-      const completedEntries = chapterEntries.filter((entry) => isLessonLaunchProgressComplete(entry.progressTarget));
-      return {
-        chapterKey,
-        chapterName: getExamLaunchChapterName(chapter),
-        totalEntries: chapterEntries.length,
-        completedEntries: completedEntries.length,
-        chapterComplete: completedEntries.length === chapterEntries.length && chapterEntries.length > 0,
-        currentChapter: Boolean(currentEntry && currentEntry.chapterKey === chapterKey),
-        pendingExamSources: [],
-      };
-    }).filter(Boolean);
-    const currentChapterSummary = chapterSummaries.find((summary) => summary.currentChapter) || null;
-    const currentChapterEntries = currentChapterSummary?.chapterKey
-      ? (chapterEntriesMap.get(currentChapterSummary.chapterKey) || [])
+    const currentEntryIndex = currentEntry ? entries.indexOf(currentEntry) : -1;
+    const eligibleEntries = currentEntryIndex > 0
+      ? entries.slice(0, currentEntryIndex)
       : [];
-    const chapterGate = {
-      hasCurrentChapter: Boolean(currentChapterSummary),
-      currentChapterKey: currentChapterSummary?.chapterKey || "",
-      currentChapterName: currentChapterSummary?.chapterName || getExamLaunchChapterName(currentEntry?.chapter),
-      completedEntries: Number(currentChapterSummary?.completedEntries || 0),
-      totalEntries: Number(currentChapterSummary?.totalEntries || 0),
-      chapterComplete: Boolean(currentChapterSummary?.chapterComplete),
-    };
+    if (!eligibleEntries.length) return [];
+
     const candidateBuckets = new Map();
     const collectCandidateSource = (lessonLike, source, entry) => {
       const candidateSource = getExamCandidateSourceMeta(lessonLike, source, entry, vm, currentEntry);
@@ -5907,30 +5527,12 @@
       }
     };
 
-    // Collect exam candidates from all chapters whose position is at or before
-    // the current playback position.  A chapter qualifies when the user's
-    // furthest completed lesson index in that chapter is > 0 (i.e. they have
-    // studied at least one lesson there), OR the chapter is at a lower index
-    // than the current chapter (already passed).
-    const currentChapterIndex = currentEntry ? Number(currentEntry.chapterIndex) : -1;
-    chapterSummaries.forEach((summary) => {
-      const chapterEntries = chapterEntriesMap.get(summary.chapterKey) || [];
-      if (!chapterEntries.length) return;
-      const entryChapterIndex = Number(chapterEntries[0]?.chapterIndex ?? -1);
-      // Include if: chapter is before current, OR is current chapter with any progress
-      const isPassedChapter = Number.isFinite(currentChapterIndex)
-        && Number.isFinite(entryChapterIndex)
-        && entryChapterIndex < currentChapterIndex;
-      const hasAnyProgress = summary.completedEntries > 0;
-      if (!isPassedChapter && !hasAnyProgress) return;
-
-      chapterEntries.forEach((entry) => {
-        collectCandidateSource(entry.chapter, "chapter", entry);
-        collectCandidateSource(entry.progressTarget, "progressTarget", entry);
-        if (entry.lesson && entry.lesson !== entry.progressTarget) {
-          collectCandidateSource(entry.lesson, "lesson", entry);
-        }
-      });
+    eligibleEntries.forEach((entry) => {
+      collectCandidateSource(entry.chapter, "chapter", entry);
+      collectCandidateSource(entry.progressTarget, "progressTarget", entry);
+      if (entry.lesson && entry.lesson !== entry.progressTarget) {
+        collectCandidateSource(entry.lesson, "lesson", entry);
+      }
     });
 
     const candidates = Array.from(candidateBuckets.values()).filter((bucket) => (
@@ -5940,19 +5542,11 @@
       sourceVariants: bucket.sourceVariants,
     }));
 
-    const chapterSummariesWithCandidates = chapterSummaries.map((summary) => ({
-      ...summary,
-      pendingExamSources: candidates
-        .filter((candidate) => candidate.entry?.chapterKey === summary.chapterKey)
-        .map(buildExamLaunchCandidatePayload)
-        .filter(Boolean),
-    }));
     logDebug("exam", "collect regular exam launch candidates", {
       currentVideoId: resolveCurrentVideoId(vm),
       currentChapterName: getExamLaunchChapterName(currentEntry?.chapter),
-      chapterGate,
       totalEntries: entries.length,
-      chapterSummaries: chapterSummariesWithCandidates,
+      eligibleEntries: eligibleEntries.length,
       candidates: candidates.map(buildExamLaunchCandidatePayload).filter(Boolean),
     });
 
@@ -6149,7 +5743,8 @@
     if (state.serverProgress.pendingAttempts >= 3) return false;
 
     state.serverProgress.pendingAttempts += 1;
-    logWarn("progress", "requesting server progress refresh", {
+    const logFn = state.serverProgress.pendingAttempts >= 2 ? logWarn : logDebug;
+    logFn("progress", "requesting server progress refresh", {
       reason,
       videoId: currentVideoId,
       attempt: state.serverProgress.pendingAttempts,
@@ -6486,16 +6081,6 @@
     safeCall(() => vm.videoNext());
   }
 
-  function formatLogPayload(payload) {
-    if (typeof payload === "undefined") return "";
-    if (typeof payload === "string") return payload;
-    try {
-      return JSON.stringify(payload);
-    } catch (_error) {
-      return String(payload);
-    }
-  }
-
   function formatLogTime(value) {
     const date = value instanceof Date ? value : new Date(value);
     return date.toLocaleTimeString("zh-CN", { hour12: false });
@@ -6565,9 +6150,6 @@
     }
     if (scope === "progress" && /server progress confirmed after refresh/i.test(message)) {
       return "服务端进度已确认";
-    }
-    if (scope === "progress" && /server progress still lagging after refresh/i.test(message)) {
-      return "服务端进度仍未追上，继续等待";
     }
     if (scope === "progress" && /server progress incomplete after refresh/i.test(message)) {
       return null;
@@ -6809,6 +6391,7 @@
   }
 
   function enqueueUiLog(level, scope, message, payload) {
+    if (level === "debug") return;
     const entry = getUiLogEntry(level, scope, message, payload);
     if (!entry) return;
     state.uiLogs.push(entry);
@@ -7125,8 +6708,8 @@
     state.config.blockDetectApis = await gmGetValue(STORAGE_KEYS.blockDetectApis, true);
     state.config.antiAntiDebug = await gmGetValue(STORAGE_KEYS.antiAntiDebug, true);
     state.exam.llm.apiBaseUrl = normalizeExamLlmApiBaseUrl(
-      await gmGetValue(STORAGE_KEYS.examLlmApiBaseUrl, "https://api.openai.com/v1"),
-    ) || "https://api.openai.com/v1";
+      await gmGetValue(STORAGE_KEYS.examLlmApiBaseUrl, "https://generativelanguage.googleapis.com/v1beta"),
+    ) || "https://generativelanguage.googleapis.com/v1beta";
     state.exam.llm.apiKey = normalizeText(await gmGetValue(STORAGE_KEYS.examLlmApiKey, ""));
     state.exam.llm.model = normalizeText(await gmGetValue(STORAGE_KEYS.examLlmModel, ""));
     state.exam.answerBank = Object.create(null);
@@ -7267,7 +6850,6 @@
     registerMenus();
 
     const ready = () => {
-      installProgressDebugHooks();
       ensureUi();
       updateUi("运行中");
       startRuntimeLoop();
