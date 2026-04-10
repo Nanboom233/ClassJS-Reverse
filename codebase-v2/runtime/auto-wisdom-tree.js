@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         2026 智慧树自动浇水施肥开花结果 - Enhanced
 // @namespace    auto-wisdom-tree
-// @version      0.3.5
+// @version      0.3.10
 // @description  智慧树是一棵树
 // @match        *://studyvideoh5.zhihuishu.com/*
 // @match        *://onlineexamh5new.zhihuishu.com/*
@@ -63,6 +63,8 @@
     studyVm: null,
     currentVideoId: null,
     currentVideoChangedAt: 0,
+    dailyModeStartVideoId: null,
+    dailyModeStartAt: 0,
     lastVideoId: null,
     lastAdvanceTargetId: null,
     lastAdvanceAt: 0,
@@ -105,6 +107,17 @@
     },
     answerFlow: {
       lastPopupAnswerAt: 0,
+    },
+    courseRuntime: {
+      courseKey: "",
+      courseLabel: "",
+      dateKey: "",
+      todayWatchedSeconds: 0,
+      lastPersistedSeconds: 0,
+      lastPersistedAt: 0,
+      lastObservedAt: 0,
+      lastObservedVideoId: null,
+      lastObservedCurrentTime: 0,
     },
     exam: {
       answerBank: Object.create(null),
@@ -167,6 +180,7 @@
     examLlmApiBaseUrl: "awt:examLlmApiBaseUrl",
     examLlmApiKey: "awt:examLlmApiKey",
     examLlmModel: "awt:examLlmModel",
+    dailyCourseWatchPrefix: "awt:dailyCourseWatch:",
   };
 
   const REPORT_RULES = [
@@ -1645,7 +1659,12 @@
     return clampPercent((currentTime / duration) * 100);
   }
 
-  function syncProgressFromPlayback(vm, reason = "runtimeTick", timestamp = now()) {
+  function syncProgressFromPlayback(
+    vm,
+    reason = "runtimeTick",
+    timestamp = now(),
+    advanceMode = resolveAdvanceModeSnapshot(vm),
+  ) {
     const video = getPlayableVideo();
     const currentVideoId = resolveCurrentVideoId(vm);
     if (!video || !currentVideoId) return false;
@@ -1658,6 +1677,14 @@
     }
 
     if (state.progressSync.videoId !== currentVideoId || !state.progressSync.observedAt) {
+      resetProgressSyncState(currentVideoId, video, vm, timestamp);
+      return false;
+    }
+
+    if (advanceMode.dailyMode) {
+      if (state.serverProgress.pendingVideoId === currentVideoId) {
+        clearPendingServerProgressRefresh();
+      }
       resetProgressSyncState(currentVideoId, video, vm, timestamp);
       return false;
     }
@@ -1715,11 +1742,11 @@
         currentLesson.percentage = actualPercent;
         changed = true;
       }
-      if (currentLesson && actualPercent >= 50 && Number(currentLesson.isStudiedLesson || 0) !== 1) {
+      if (currentLesson && actualPercent >= 50 && !advanceMode.lesson.complete && Number(currentLesson.isStudiedLesson || 0) !== 1) {
         currentLesson.isStudiedLesson = 1;
         changed = true;
       }
-      if (actualPercent >= 50) {
+      if (actualPercent >= 50 && !advanceMode.lesson.complete) {
         const previousPlayTimes = Number(vm.playTimes || 0);
         vm.playTimes = Math.max(previousPlayTimes, 6);
         if (vm.playTimes !== previousPlayTimes) {
@@ -1743,6 +1770,7 @@
   function haltScriptForSliderVerification(message) {
     if (state.halted) return;
     state.halted = true;
+    persistTodayCourseWatch(true);
     if (state.runtimeTimerId) { clearInterval(state.runtimeTimerId); state.runtimeTimerId = 0; }
     if (state.vmProbeTimerId) { clearInterval(state.vmProbeTimerId); state.vmProbeTimerId = 0; }
     if (state.examVmProbeTimerId) { clearInterval(state.examVmProbeTimerId); state.examVmProbeTimerId = 0; }
@@ -5149,6 +5177,156 @@
     return null;
   }
 
+  function getLocalDateKey(timestamp = now()) {
+    const date = new Date(timestamp);
+    return [
+      String(date.getFullYear()),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0"),
+    ].join("-");
+  }
+
+  function getStudyLocationSearchParams() {
+    return safeCall(() => new URL(PAGE.location?.href || location.href).searchParams, null);
+  }
+
+  function getStudyCourseContext(vm) {
+    if (!vm) return null;
+
+    const searchParams = getStudyLocationSearchParams();
+    const recruitId = normalizeVideoId(vm?.recruitId)
+      || normalizeVideoId(searchParams?.get("recruitId"))
+      || normalizeVideoId(searchParams?.get("recruit_id"));
+    const courseId = normalizeVideoId(vm?.courseId)
+      || normalizeVideoId(vm?.courseInfo?.courseId)
+      || normalizeVideoId(searchParams?.get("courseId"))
+      || normalizeVideoId(searchParams?.get("courseid"));
+    const courseLabel = normalizeText(
+      vm?.courseName
+      || vm?.courseInfo?.name
+      || vm?.courseInfo?.courseName
+      || document.querySelector(".courseName, .course-name, .courseTitle, .course-title")?.textContent
+      || "",
+    );
+    const keyParts = [courseId, recruitId].filter(Boolean);
+    const fallbackPath = normalizeText(PAGE.location?.pathname || location.pathname || "");
+    const courseKey = keyParts.length ? keyParts.join("::") : fallbackPath ? `path::${fallbackPath}` : "";
+    if (!courseKey) return null;
+
+    return {
+      courseKey,
+      courseLabel: courseLabel || courseKey,
+    };
+  }
+
+  function getDailyCourseWatchStorageKey(courseKey, dateKey = getLocalDateKey()) {
+    const normalizedCourseKey = normalizeText(courseKey);
+    const normalizedDateKey = normalizeText(dateKey);
+    if (!normalizedCourseKey || !normalizedDateKey) return "";
+    return `${STORAGE_KEYS.dailyCourseWatchPrefix}${normalizedDateKey}:${normalizedCourseKey}`;
+  }
+
+  function resetCourseRuntimeObservation(timestamp = now()) {
+    state.courseRuntime.lastObservedAt = timestamp;
+    state.courseRuntime.lastObservedVideoId = null;
+    state.courseRuntime.lastObservedCurrentTime = 0;
+  }
+
+  function persistTodayCourseWatch(force = false, timestamp = now()) {
+    const storageKey = getDailyCourseWatchStorageKey(
+      state.courseRuntime.courseKey,
+      state.courseRuntime.dateKey,
+    );
+    if (!storageKey) return false;
+
+    const seconds = Math.max(0, Math.floor(state.courseRuntime.todayWatchedSeconds || 0));
+    if (!force && seconds === state.courseRuntime.lastPersistedSeconds) return false;
+    if (!force && timestamp - state.courseRuntime.lastPersistedAt < 2000) return false;
+
+    const wroteSync = gmSetValueSync(storageKey, seconds);
+    if (!wroteSync) {
+      void gmSetValue(storageKey, seconds);
+    }
+    state.courseRuntime.lastPersistedSeconds = seconds;
+    state.courseRuntime.lastPersistedAt = timestamp;
+    return true;
+  }
+
+  function syncTodayCourseRuntime(vm, timestamp = now()) {
+    const context = getStudyCourseContext(vm);
+    const dateKey = getLocalDateKey(timestamp);
+    if (!context) return false;
+
+    const contextChanged = (
+      state.courseRuntime.courseKey !== context.courseKey
+      || state.courseRuntime.dateKey !== dateKey
+    );
+    if (!contextChanged) {
+      state.courseRuntime.courseLabel = context.courseLabel || state.courseRuntime.courseLabel || context.courseKey;
+      return false;
+    }
+
+    if (state.courseRuntime.courseKey) {
+      persistTodayCourseWatch(true, timestamp);
+    }
+
+    const storageKey = getDailyCourseWatchStorageKey(context.courseKey, dateKey);
+    const storedSeconds = Math.max(0, Number(gmGetValueSync(storageKey, 0) || 0));
+    state.courseRuntime.courseKey = context.courseKey;
+    state.courseRuntime.courseLabel = context.courseLabel || context.courseKey;
+    state.courseRuntime.dateKey = dateKey;
+    state.courseRuntime.todayWatchedSeconds = storedSeconds;
+    state.courseRuntime.lastPersistedSeconds = Math.floor(storedSeconds);
+    state.courseRuntime.lastPersistedAt = timestamp;
+    resetCourseRuntimeObservation(timestamp);
+    return true;
+  }
+
+  function trackTodayCourseWatch(vm, timestamp = now()) {
+    if (!isStudyPage()) return false;
+    syncTodayCourseRuntime(vm, timestamp);
+    if (!state.courseRuntime.courseKey) return false;
+
+    const video = getPlayableVideo();
+    const currentVideoId = resolveCurrentVideoId(vm);
+    const currentTime = Number(video?.currentTime || 0);
+    if (!video || !currentVideoId || !Number.isFinite(currentTime) || currentTime < 0) {
+      resetCourseRuntimeObservation(timestamp);
+      return false;
+    }
+
+    if (
+      !state.courseRuntime.lastObservedAt
+      || state.courseRuntime.lastObservedVideoId !== currentVideoId
+    ) {
+      state.courseRuntime.lastObservedAt = timestamp;
+      state.courseRuntime.lastObservedVideoId = currentVideoId;
+      state.courseRuntime.lastObservedCurrentTime = currentTime;
+      return false;
+    }
+
+    const elapsedSeconds = Math.max(0, (timestamp - state.courseRuntime.lastObservedAt) / 1000);
+    const playbackDelta = currentTime - Number(state.courseRuntime.lastObservedCurrentTime || 0);
+    if (playbackDelta > 0) {
+      const maxExpectedDelta = Math.max(4, elapsedSeconds * 1.75 + 1.5);
+      if (playbackDelta <= maxExpectedDelta) {
+        state.courseRuntime.todayWatchedSeconds += playbackDelta;
+        persistTodayCourseWatch(false, timestamp);
+      } else {
+        logDebug("progress", "daily course watch timer baseline reset after playback jump", {
+          currentVideoId,
+          playbackDelta: Number(playbackDelta.toFixed(2)),
+          elapsedSeconds: Number(elapsedSeconds.toFixed(2)),
+        });
+      }
+    }
+
+    state.courseRuntime.lastObservedAt = timestamp;
+    state.courseRuntime.lastObservedVideoId = currentVideoId;
+    state.courseRuntime.lastObservedCurrentTime = currentTime;
+    return true;
+  }
+
   function resolveCurrentVideoId(vm) {
     return normalizeVideoId(vm?.lastViewVideoId);
   }
@@ -5677,16 +5855,83 @@
     return clampPercent(lesson.percentage || 0);
   }
 
-  function isServerProgressConfirmedComplete(vm) {
-    const currentLesson = findCurrentLesson(vm);
-    if (!currentLesson) return hasFinishIcon();
-
-    const confirmed = getServerProgressEntry(currentLesson);
-    if (confirmed) {
-      return Number(confirmed.watchState || 0) === 1;
+  function getLessonCompletionSnapshot(lesson, options = {}) {
+    if (!lesson) {
+      return {
+        hasLesson: false,
+        displayedPercent: 0,
+        serverPercent: 0,
+        serverWatchState: 0,
+        studyTotalTime: 0,
+        duration: 0,
+        recordedComplete: false,
+        serverComplete: false,
+        complete: false,
+      };
     }
 
-    return false;
+    const confirmed = options.confirmed || getServerProgressEntry(lesson);
+    const displayedPercent = getDisplayedRecordPercent(lesson);
+    const serverPercent = confirmed ? clampPercent(confirmed.percentage) : getServerRecordPercent(lesson);
+    const serverWatchState = Number(confirmed?.watchState || 0);
+    const studyTotalTime = Math.max(
+      Number(lesson.studyTotalTime || 0),
+      Number(confirmed?.studyTotalTime || 0),
+      0,
+    );
+    const duration = Math.max(0, Number(lesson.videoSec || 0));
+    const recordedComplete = displayedPercent >= 100;
+    const serverComplete = serverWatchState === 1 || serverPercent >= 100;
+
+    return {
+      hasLesson: true,
+      displayedPercent,
+      serverPercent,
+      serverWatchState,
+      studyTotalTime,
+      duration,
+      recordedComplete,
+      serverComplete,
+      complete: recordedComplete || serverComplete,
+    };
+  }
+
+  function getCurrentLessonCompletionSnapshot(vm) {
+    return getLessonCompletionSnapshot(findCurrentLesson(vm));
+  }
+
+  function createEmptyAdvanceModeSnapshot() {
+    return {
+      hasVm: false,
+      lesson: getLessonCompletionSnapshot(null),
+      courseProgress: null,
+      dailyMode: false,
+    };
+  }
+
+  function getAdvanceModeSnapshot(vm, options = {}) {
+    if (!isStudyVm(vm)) {
+      return createEmptyAdvanceModeSnapshot();
+    }
+
+    const lessonSnapshot = options.lessonSnapshot || getCurrentLessonCompletionSnapshot(vm);
+    const courseProgress = options.courseProgress || getCourseProgress(vm);
+    const dailyMode = Boolean(
+      courseProgress
+      && courseProgress.totalCount > 0
+      && courseProgress.completedCount >= courseProgress.totalCount
+    );
+    return {
+      hasVm: true,
+      lesson: lessonSnapshot,
+      courseProgress,
+      dailyMode,
+    };
+  }
+
+  function resolveAdvanceModeSnapshot(vm, snapshot = null) {
+    if (snapshot && typeof snapshot === "object") return snapshot;
+    return getAdvanceModeSnapshot(vm);
   }
 
   function ensureCurrentLessonServerProgress(vm, reason = "saveSuccess", options) {
@@ -5890,6 +6135,15 @@
     return findFirstPendingVideoEntry(vm, currentVideoId);
   }
 
+  function findNextLoopVideoEntry(vm, currentVideoId = resolveCurrentVideoId(vm)) {
+    const entries = collectVideoEntries(vm);
+    if (!entries.length) return null;
+
+    const currentIndex = entries.findIndex((entry) => entry.videoId === normalizeVideoId(currentVideoId));
+    if (currentIndex < 0) return entries[0];
+    return entries[(currentIndex + 1) % entries.length] || entries[0];
+  }
+
   function jumpToVideoEntry(vm, entry) {
     if (!entry || typeof vm?.videoClick !== "function") return false;
 
@@ -5911,14 +6165,6 @@
 
   function hasFinishIcon() {
     return Boolean(document.querySelector(".clearfix.video.current_play .fl.time_icofinish"));
-  }
-
-  function isRecordedProgressComplete(vm) {
-    const currentLesson = findCurrentLesson(vm);
-    if (!currentLesson) {
-      return hasFinishIcon();
-    }
-    return Number(currentLesson.isStudiedLesson || 0) === 1 || hasFinishIcon();
   }
 
   function isVideoNaturallyFinished(video) {
@@ -5955,11 +6201,60 @@
     state.lastReplayAt = 0;
   }
 
-  function retryCurrentVideoIfNeeded(vm, currentVideoId = resolveCurrentVideoId(vm)) {
+  function clearDailyModeStartReset() {
+    state.dailyModeStartVideoId = null;
+    state.dailyModeStartAt = 0;
+  }
+
+  function armDailyModeStartReset(targetVideoId, timestamp = now()) {
+    state.dailyModeStartVideoId = normalizeVideoId(targetVideoId);
+    state.dailyModeStartAt = timestamp;
+  }
+
+  function applyDailyModeStartReset(vm, timestamp = now()) {
+    const targetVideoId = normalizeVideoId(state.dailyModeStartVideoId);
+    if (!targetVideoId) return false;
+
+    const currentVideoId = resolveCurrentVideoId(vm);
+    if (!currentVideoId) return false;
+    if (currentVideoId !== targetVideoId) {
+      if (state.dailyModeStartAt && timestamp - state.dailyModeStartAt > 15000) {
+        clearDailyModeStartReset();
+      }
+      return false;
+    }
+
     const video = getPlayableVideo();
+    if (!video) return false;
+
+    clearDailyModeStartReset();
+    safeCall(() => {
+      if (typeof video.currentTime === "number") {
+        video.currentTime = 0;
+      }
+      const player = safeCall(() => PAGE.ablePlayerX && PAGE.ablePlayerX("container"));
+      if (player && typeof player.seek === "function") {
+        player.seek(0);
+      }
+    });
+    resetProgressSyncState(currentVideoId, video, vm, timestamp);
+    logSuccess("player", "daily mode reset target video to start", {
+      videoId: currentVideoId,
+    });
+    updateUi("当前为日常模式：下一集已从开头开始播放");
+    return true;
+  }
+
+  function retryCurrentVideoIfNeeded(
+    vm,
+    currentVideoId = resolveCurrentVideoId(vm),
+    advanceMode = resolveAdvanceModeSnapshot(vm),
+  ) {
+    const video = getPlayableVideo();
+    if (advanceMode.dailyMode) return false;
     if (!currentVideoId || shouldDelayReplay(currentVideoId)) return false;
     if (!isVideoNaturallyFinished(video)) return false;
-    if (isRecordedProgressComplete(vm) && !isServerProgressConfirmedComplete(vm)) {
+    if (advanceMode.lesson.recordedComplete && !advanceMode.lesson.serverComplete) {
       if (ensureCurrentLessonServerProgress(vm, "endedServerConfirm", {
         delayMs: 0,
         targetStudyTime: Number(vm?.totalStudyTime || 0),
@@ -5972,7 +6267,7 @@
       updateUi("等待服务端进度确认", vm);
       return true;
     }
-    if (isServerProgressConfirmedComplete(vm)) return false;
+    if (advanceMode.lesson.serverComplete) return false;
     if (state.lastReplayVideoId === currentVideoId && now() - state.lastReplayAt < 3000) return true;
 
     state.lastReplayVideoId = currentVideoId;
@@ -5999,9 +6294,9 @@
     return true;
   }
 
-  function shouldAdvance(vm) {
+  function shouldAdvance(vm, advanceMode = resolveAdvanceModeSnapshot(vm)) {
     const video = getPlayableVideo();
-    return isVideoNaturallyFinished(video) && isServerProgressConfirmedComplete(vm);
+    return isVideoNaturallyFinished(video) && advanceMode.lesson.serverComplete;
   }
 
   function hasRecentAdvanceAttempt(currentVideoId, targetVideoId) {
@@ -6035,11 +6330,49 @@
     return true;
   }
 
-  function advanceVideo(vm) {
+  function hasRecentLoopAdvanceAttempt(currentVideoId, targetVideoId) {
+    const sourceId = normalizeVideoId(currentVideoId);
+    const nextId = normalizeVideoId(targetVideoId);
+    if (!sourceId || !nextId) return false;
+    return state.lastVideoId === sourceId
+      && state.lastAdvanceTargetId === nextId
+      && now() - state.lastAdvanceAt < 8000;
+  }
+
+  function jumpToNextLoopVideo(vm, reason, currentVideoId = resolveCurrentVideoId(vm)) {
+    const nextLoopEntry = findNextLoopVideoEntry(vm, currentVideoId);
+    if (!nextLoopEntry) return false;
+    if (hasRecentLoopAdvanceAttempt(currentVideoId, nextLoopEntry.videoId)) {
+      return true;
+    }
+    if (!safeCall(() => jumpToVideoEntry(vm, nextLoopEntry), false)) {
+      return false;
+    }
+
+    armDailyModeStartReset(nextLoopEntry.videoId);
+    markAdvanceAttempt(currentVideoId, nextLoopEntry.videoId, 4500);
+    logSuccess("player", "daily mode jump to next list video", {
+      fromVideoId: currentVideoId,
+      toVideoId: nextLoopEntry.videoId,
+      reason,
+    });
+    toast("当前课程已全部完成，已进入日常模式");
+    updateUi("当前为日常模式：按列表循环视频");
+    return true;
+  }
+
+  function advanceVideo(vm, advanceMode = resolveAdvanceModeSnapshot(vm)) {
     const currentVideoId = observeCurrentVideo(vm);
     if (vm.testDialog || vm.imgDialog) return;
-    if (retryCurrentVideoIfNeeded(vm, currentVideoId)) return;
-    if (isRecordedProgressComplete(vm) && !isServerProgressConfirmedComplete(vm)) {
+    if (advanceMode.dailyMode) {
+      clearPendingServerProgressRefresh();
+      if (!isVideoNaturallyFinished(getPlayableVideo())) return;
+      jumpToNextLoopVideo(vm, "dailyModeLoop", currentVideoId);
+      return;
+    }
+
+    if (retryCurrentVideoIfNeeded(vm, currentVideoId, advanceMode)) return;
+    if (advanceMode.lesson.recordedComplete && !advanceMode.lesson.serverComplete) {
       if (ensureCurrentLessonServerProgress(vm, "advanceServerConfirm", {
         delayMs: 0,
         targetStudyTime: Number(vm?.totalStudyTime || 0),
@@ -6048,8 +6381,8 @@
         return;
       }
     }
-    const readyToAdvance = shouldAdvance(vm);
-    const serverConfirmedComplete = isServerProgressConfirmedComplete(vm);
+    const readyToAdvance = shouldAdvance(vm, advanceMode);
+    const serverConfirmedComplete = advanceMode.lesson.serverComplete;
     if (readyToAdvance) {
       logDebug("exam", "video reached regular exam launch gate", {
         currentVideoId,
@@ -6315,6 +6648,7 @@
   }
 
   function getCourseProgress(vm) {
+    if (!isStudyVm(vm)) return null;
     const entries = collectVideoEntries(vm);
     if (!entries.length) return null;
 
@@ -6322,24 +6656,23 @@
     let playedDuration = 0;
     let totalDuration = 0;
     for (const entry of entries) {
-      const studied = Number(entry.progressTarget?.isStudiedLesson || 0);
-      const duration = Math.max(0, Number(entry.progressTarget?.videoSec || 0));
-      let recordedDuration = Math.max(0, Number(entry.progressTarget?.studyTotalTime || 0));
+      const snapshot = getLessonCompletionSnapshot(entry.progressTarget);
+      const duration = snapshot.duration;
+      let recordedDuration = snapshot.studyTotalTime;
       const entryVideoId = normalizeVideoId(entry.progressTarget?.videoId);
       if (entryVideoId && entryVideoId === state.progressSync.videoId) {
         recordedDuration = Math.max(recordedDuration, Number(state.progressSync.totalStudyTime || 0));
       }
-      if (!(recordedDuration > 0) && duration > 0) {
-        const percentage = clampPercent(entry.progressTarget?.percentage || 0);
-        if (percentage > 0) {
-          recordedDuration = duration * (percentage / 100);
-        } else if (studied === 1) {
-          recordedDuration = duration;
+      if (duration > 0 && snapshot.complete) {
+        recordedDuration = duration;
+      } else if (!(recordedDuration > 0) && duration > 0) {
+        if (snapshot.displayedPercent > 0) {
+          recordedDuration = duration * (snapshot.displayedPercent / 100);
         }
       }
       totalDuration += duration;
       playedDuration += Math.min(duration, recordedDuration);
-      if (studied === 1) {
+      if (snapshot.complete) {
         completedCount += 1;
       }
     }
@@ -6353,8 +6686,14 @@
     };
   }
 
-  function buildUiStatusText(message, vm) {
+  function buildUiStatusText(message, vm, advanceMode = resolveAdvanceModeSnapshot(vm)) {
     const lines = [message || state.uiStatusText || "运行中"];
+    if (advanceMode.dailyMode) {
+      lines.push("当前模式：日常模式");
+    }
+    if (state.courseRuntime.courseKey) {
+      lines.push(`今日课程观看：${formatDuration(state.courseRuntime.todayWatchedSeconds)}`);
+    }
     const currentVideoProgress = getCurrentVideoProgress(vm);
     if (currentVideoProgress) {
       lines.push(
@@ -6362,10 +6701,9 @@
       );
     }
 
-    const courseProgress = getCourseProgress(vm);
-    if (courseProgress) {
+    if (advanceMode.courseProgress) {
       lines.push(
-        `总课程进度：${formatDuration(courseProgress.playedDuration)} / ${formatDuration(courseProgress.totalDuration)}（${formatPercent(courseProgress.percent)}，已完成 ${courseProgress.completedCount}/${courseProgress.totalCount}）`,
+        `总课程进度：${formatDuration(advanceMode.courseProgress.playedDuration)} / ${formatDuration(advanceMode.courseProgress.totalDuration)}（${formatPercent(advanceMode.courseProgress.percent)}，已完成 ${advanceMode.courseProgress.completedCount}/${advanceMode.courseProgress.totalCount}）`,
       );
     }
 
@@ -6679,7 +7017,12 @@
       state.uiSummaryNode.textContent = getConfigSummary();
     }
     if (state.uiStatusNode) {
-      state.uiStatusNode.textContent = buildUiStatusText(state.uiStatusText || "运行中", vm);
+      const advanceMode = safeCall(() => getAdvanceModeSnapshot(vm), createEmptyAdvanceModeSnapshot());
+      const nextStatusText = safeCall(
+        () => buildUiStatusText(state.uiStatusText || "运行中", vm, advanceMode),
+        state.uiStatusText || "运行中",
+      );
+      state.uiStatusNode.textContent = nextStatusText;
     }
   }
 
@@ -6819,7 +7162,10 @@
     }
     closeTransientDialogs(vm);
     ensureVideoState(vm);
-    syncProgressFromPlayback(vm, "runtimeTick");
+    applyDailyModeStartReset(vm);
+    const advanceMode = getAdvanceModeSnapshot(vm);
+    syncProgressFromPlayback(vm, "runtimeTick", now(), advanceMode);
+    trackTodayCourseWatch(vm);
 
     if (answerDialog(vm)) {
       updateUi("已自动作答并提交");
@@ -6833,7 +7179,7 @@
 
     maybeCloseClosingExamLaunchFromSession(state.exam.session, "runtimeTickCached");
     void syncExamSessionFromStorage();
-    advanceVideo(vm);
+    advanceVideo(vm, advanceMode);
   }
 
   async function bootstrap() {
