@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         2026 智慧树自动浇水施肥开花结果 - Enhanced
 // @namespace    auto-wisdom-tree
-// @version      0.3.1
+// @version      0.3.5
 // @description  智慧树是一棵树
 // @match        *://studyvideoh5.zhihuishu.com/*
 // @match        *://onlineexamh5new.zhihuishu.com/*
@@ -20,6 +20,7 @@
 // @grant        GM_registerMenuCommand
 // @grant        GM_xmlhttpRequest
 // @grant        GM_openInTab
+// @grant        GM_closeTab
 // @connect      *
 // @license      MIT
 // ==/UserScript==
@@ -69,6 +70,7 @@
     lastReplayVideoId: null,
     lastReplayAt: 0,
     lastToastAt: 0,
+    halted: false,
     runtimeTimerId: 0,
     vmProbeTimerId: 0,
     examVmProbeTimerId: 0,
@@ -785,6 +787,7 @@
 
     const payload = parseJsonSafe(bodyText);
     if (!payload || typeof payload !== "object") return;
+    if (state.halted) return;
 
     if (STUDY_PROGRESS_QUERY_RE.test(normalizedUrl)) {
       const vm = findStudyVm();
@@ -793,6 +796,11 @@
         return;
       }
       applyServerProgressSnapshot(vm, payload, "queryStuyInfo");
+      return;
+    }
+
+    if (payload.code === -12 && STUDY_SAVE_DB_RE.test(normalizedUrl)) {
+      haltScriptForSliderVerification(payload.message || "需要弹出滑块验证");
       return;
     }
 
@@ -1019,18 +1027,6 @@
     return true;
   }
 
-  function shouldBlockExamWindowClose(stackText = "") {
-    if (!isExamPage() || !state.config.blockDetectApis) return false;
-    const lastDetectTriggerAt = Number(state.exam.lastDetectTriggerAt || 0);
-    if (lastDetectTriggerAt > 0 && now() - lastDetectTriggerAt < 5000) {
-      return true;
-    }
-    const normalizedStack = normalizeText(stackText).toLowerCase();
-    if (!normalizedStack) return false;
-    return /checkout/.test(normalizedStack)
-      || (/collectlog/.test(normalizedStack) && /close/.test(normalizedStack));
-  }
-
   function installAntiDebugGuards() {
     if (state.antiDebug.installed || !state.config.antiAntiDebug) return;
     state.antiDebug.installed = true;
@@ -1112,27 +1108,6 @@
 
     installTimerProxy("setTimeout");
     installTimerProxy("setInterval");
-
-    try {
-      if (typeof PAGE.close === "function") {
-        const originalClose = PAGE.close.bind(PAGE);
-        PAGE.close = markWrapped(new Proxy(originalClose, {
-          apply(target, thisArg, args) {
-            const stack = safeCall(() => String(new Error().stack || ""), "");
-            if (shouldBlockExamWindowClose(stack)) {
-              markExamDetectTriggered("homework detect window.close blocked", {
-                stack,
-              });
-              return false;
-            }
-            return Reflect.apply(target, thisArg, args);
-          },
-        }));
-        logSuccess("anti-debug", "window.close guard installed");
-      }
-    } catch (error) {
-      logError("anti-debug", "window.close guard install failed", error);
-    }
   }
 
   function normalizeUrl(input) {
@@ -1763,6 +1738,19 @@
 
     resetProgressSyncState(currentVideoId, video, vm, timestamp);
     return changed;
+  }
+
+  function haltScriptForSliderVerification(message) {
+    if (state.halted) return;
+    state.halted = true;
+    if (state.runtimeTimerId) { clearInterval(state.runtimeTimerId); state.runtimeTimerId = 0; }
+    if (state.vmProbeTimerId) { clearInterval(state.vmProbeTimerId); state.vmProbeTimerId = 0; }
+    if (state.examVmProbeTimerId) { clearInterval(state.examVmProbeTimerId); state.examVmProbeTimerId = 0; }
+    clearPendingServerProgressRefresh();
+    state.serverProgress.pendingPayload = null;
+    logWarn("bootstrap", "script halted: slider verification required", { message });
+    toast(`脚本已中止：${message}，请手动完成滑块验证后刷新页面`);
+    updateUi(`已中止：${message}`);
   }
 
   function startRuntimeLoop() {
@@ -2717,16 +2705,9 @@
     if (preferVmSaveSuccess && typeof pageVm.saveSuccess === "function") {
       safeCall(() => pageVm.saveSuccess(), false);
     }
-    const closeStrategies = [
-      () => { if (typeof pageVm?.closeWindow === "function") pageVm.closeWindow(); },
-      () => { if (typeof pageVm?.$router?.push === "function") pageVm.$router.push({ name: "webExanList" }); },
-      () => { PAGE.close(); },
-      () => { if (typeof PAGE.history?.back === "function") PAGE.history.back(); },
-    ];
-    for (const strategy of closeStrategies) {
-      safeCall(strategy);
-    }
-
+    safeCall(() => { if (typeof pageVm?.closeWindow === "function") pageVm.closeWindow(); });
+    safeCall(() => { PAGE.close(); });
+    safeCall(() => { if (typeof GM_closeTab === "function") GM_closeTab(); });
     attemptHomeworkExamRouteFallback(pageVm, reason, closeAttemptCount);
     return true;
   }
@@ -3409,7 +3390,9 @@
       vm.$alert = wrapVmMethod(vm, vm.$alert, (original) => function (message, ...rest) {
         if (state.config.blockDetectApis && /检测到异常脚本/.test(normalizeText(message))) {
           markExamDetectTriggered("homework detect alert blocked");
-          return Promise.resolve(false);
+          // Return a never-resolving Promise so the .then() chain
+          // (which typically closes the window) never executes.
+          return new Promise(() => { });
         }
         return original(message, ...rest);
       });
@@ -3939,6 +3922,16 @@
     const candidate = Array.isArray(payload?.candidates) ? payload.candidates[0] : null;
     const parts = candidate?.content?.parts;
     if (!Array.isArray(parts)) return "";
+    // Try each part individually first — if one is valid JSON, return it directly
+    // (avoids corruption from joining text + grounding metadata parts)
+    for (const part of parts) {
+      const text = typeof part === "string" ? part : typeof part?.text === "string" ? part.text : "";
+      const trimmed = text.trim();
+      if (!trimmed.startsWith("{")) continue;
+      if (parseJsonSafe(trimmed) || extractJsonPayloadFromText(trimmed)) {
+        return text;
+      }
+    }
     return parts.map((part) => {
       if (typeof part === "string") return part;
       if (typeof part?.text === "string") return part.text;
@@ -4156,7 +4149,11 @@
     }
 
     const content = extractGeminiContent(outerPayload);
-    const parsedPayload = extractJsonPayloadFromText(content);
+    let parsedPayload = extractJsonPayloadFromText(content);
+    // Fallback: Gemini with responseMimeType may embed parsed JSON directly
+    if (!parsedPayload && content && typeof content === "string") {
+      try { parsedPayload = JSON.parse(content.replace(/^\uFEFF/, "")); } catch (_) { /* ignore */ }
+    }
     if (!parsedPayload || typeof parsedPayload !== "object") {
       logWarn("exam", "llm response content parse failed", {
         contentLength: (content || "").length,
@@ -4873,12 +4870,18 @@
     const examAlreadyComplete = isStudentExamCompletionComplete(preAiCompletion)
       || (isHomeworkExamLastQuestion(pageVm) && questionInfo.explicitAnswers.length > 0);
     if (pageVm && examAlreadyComplete) {
-      // Persist completion and close/release.
       if (maybeBypassCompletedHomeworkExam(pageVm, "runtimeProgressComplete")) {
         updateUi("平时测试已完成，跳过 AI 并关闭页面");
         return true;
       }
-      // Save chain in progress — wait, but still block AI.
+      // Bypass returned false — either completion not confirmed or save chain pending.
+      // If no save chain is running, start one for the last question.
+      if (!state.exam.pendingSave.kind && isHomeworkExamLastQuestion(pageVm)) {
+        if (trySaveAndCloseLastExamQuestion(pageVm, questionInfo)) {
+          updateUi("已完成最后一题，正在暂存并关闭页面");
+          return true;
+        }
+      }
       updateUi("平时测试已完成，等待保存链完成");
       return false;
     }
@@ -5736,6 +5739,7 @@
   }
 
   function requestServerProgressRefresh(vm, reason = state.serverProgress.pendingReason || "saveSuccess") {
+    if (state.halted) return false;
     if (!vm || typeof vm.queryStuyInfo !== "function") return false;
 
     const currentVideoId = resolveCurrentVideoId(vm);
@@ -5755,6 +5759,7 @@
   }
 
   function scheduleServerProgressRefresh(vm, reason = "saveSuccess", options) {
+    if (state.halted) return false;
     if (!vm || typeof vm.queryStuyInfo !== "function") return false;
     const config = options || {};
 
@@ -6785,6 +6790,7 @@
   }
 
   function runtimeTick() {
+    if (state.halted) return;
     if (document.readyState === "loading") return;
 
     patchJqueryAjax();
