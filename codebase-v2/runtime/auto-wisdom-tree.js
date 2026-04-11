@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         2026 智慧树自动浇水施肥开花结果 - Enhanced
 // @namespace    auto-wisdom-tree
-// @version      0.3.10
+// @version      0.3.13
 // @description  智慧树是一棵树
 // @match        *://studyvideoh5.zhihuishu.com/*
 // @match        *://onlineexamh5new.zhihuishu.com/*
@@ -65,6 +65,8 @@
     currentVideoChangedAt: 0,
     dailyModeStartVideoId: null,
     dailyModeStartAt: 0,
+    dailyModeSettleVideoId: null,
+    dailyModeSettleUntil: 0,
     lastVideoId: null,
     lastAdvanceTargetId: null,
     lastAdvanceAt: 0,
@@ -5351,6 +5353,12 @@
       if (state.lastAdvanceTargetId === currentVideoId) {
         state.lastAdvanceTargetId = null;
       }
+      if (
+        state.dailyModeSettleVideoId
+        && normalizeVideoId(state.dailyModeSettleVideoId) !== currentVideoId
+      ) {
+        clearDailyModeSettle();
+      }
       logDebug("player", "observed current video change", {
         previousVideoId,
         currentVideoId,
@@ -6201,33 +6209,22 @@
     state.lastReplayAt = 0;
   }
 
-  function clearDailyModeStartReset() {
-    state.dailyModeStartVideoId = null;
-    state.dailyModeStartAt = 0;
-  }
-
-  function armDailyModeStartReset(targetVideoId, timestamp = now()) {
-    state.dailyModeStartVideoId = normalizeVideoId(targetVideoId);
-    state.dailyModeStartAt = timestamp;
-  }
-
-  function applyDailyModeStartReset(vm, timestamp = now()) {
-    const targetVideoId = normalizeVideoId(state.dailyModeStartVideoId);
-    if (!targetVideoId) return false;
-
-    const currentVideoId = resolveCurrentVideoId(vm);
-    if (!currentVideoId) return false;
-    if (currentVideoId !== targetVideoId) {
-      if (state.dailyModeStartAt && timestamp - state.dailyModeStartAt > 15000) {
-        clearDailyModeStartReset();
-      }
-      return false;
-    }
-
-    const video = getPlayableVideo();
+  function canSeekVideoToStart(video) {
     if (!video) return false;
+    if (Number(video.readyState || 0) >= 1) return true;
+    if (Number(video.duration || 0) > 0) return true;
+    return Number(video.seekable?.length || 0) > 0;
+  }
 
-    clearDailyModeStartReset();
+  function resetVideoPlaybackToStart(video, options = {}) {
+    if (!video || !canSeekVideoToStart(video)) return false;
+
+    const shouldResume = options.resume !== false;
+    safeCall(() => {
+      if (typeof video.pause === "function") {
+        video.pause();
+      }
+    });
     safeCall(() => {
       if (typeof video.currentTime === "number") {
         video.currentTime = 0;
@@ -6237,8 +6234,117 @@
         player.seek(0);
       }
     });
+    if (shouldResume) {
+      safeCall(() => {
+        const playResult = video.play?.();
+        if (playResult && typeof playResult.catch === "function") {
+          playResult.catch(() => { });
+        }
+      });
+    }
+    return Number(video.currentTime || 0) <= 0.5;
+  }
+
+  function clearDailyModeSettle() {
+    state.dailyModeSettleVideoId = null;
+    state.dailyModeSettleUntil = 0;
+  }
+
+  function clearDailyModeStartReset() {
+    state.dailyModeStartVideoId = null;
+    state.dailyModeStartAt = 0;
+  }
+
+  function clearDailyModeTransitionState() {
+    clearDailyModeStartReset();
+    clearDailyModeSettle();
+  }
+
+  function armDailyModeSettle(videoId, timestamp = now(), settleMs = 2500) {
+    state.dailyModeSettleVideoId = normalizeVideoId(videoId);
+    state.dailyModeSettleUntil = state.dailyModeSettleVideoId
+      ? timestamp + Math.max(0, Number(settleMs || 0))
+      : 0;
+  }
+
+  function armDailyModeStartReset(targetVideoId, timestamp = now()) {
+    state.dailyModeStartVideoId = normalizeVideoId(targetVideoId);
+    state.dailyModeStartAt = timestamp;
+    clearDailyModeSettle();
+  }
+
+  function getPendingDailyModeStartReset(timestamp = now()) {
+    const targetVideoId = normalizeVideoId(state.dailyModeStartVideoId);
+    if (!targetVideoId) return null;
+
+    if (state.dailyModeStartAt && timestamp - state.dailyModeStartAt > 15000) {
+      logWarn("player", "daily mode start reset timed out", {
+        targetVideoId,
+        currentVideoId: state.currentVideoId,
+        waitedMs: timestamp - state.dailyModeStartAt,
+      });
+      clearDailyModeStartReset();
+      return null;
+    }
+
+    return {
+      targetVideoId,
+      startedAt: state.dailyModeStartAt,
+      waitedMs: state.dailyModeStartAt ? Math.max(0, timestamp - state.dailyModeStartAt) : 0,
+    };
+  }
+
+  function isDailyModeSettling(currentVideoId = state.currentVideoId, timestamp = now()) {
+    const settleVideoId = normalizeVideoId(state.dailyModeSettleVideoId);
+    const activeVideoId = normalizeVideoId(currentVideoId);
+    if (!settleVideoId) return false;
+    if (!activeVideoId || activeVideoId !== settleVideoId) {
+      clearDailyModeSettle();
+      return false;
+    }
+    if (!state.dailyModeSettleUntil || timestamp >= state.dailyModeSettleUntil) {
+      clearDailyModeSettle();
+      return false;
+    }
+
+    const video = getPlayableVideo();
+    if (
+      video
+      && !isVideoNaturallyFinished(video)
+      && Number(video.currentTime || 0) > 0.5
+    ) {
+      clearDailyModeSettle();
+      return false;
+    }
+
+    return true;
+  }
+
+  function applyDailyModeStartReset(vm, timestamp = now()) {
+    const pendingReset = getPendingDailyModeStartReset(timestamp);
+    if (!pendingReset) return false;
+    const targetVideoId = pendingReset.targetVideoId;
+
+    const currentVideoId = resolveCurrentVideoId(vm);
+    if (!currentVideoId) return false;
+    if (currentVideoId !== targetVideoId) return false;
+
+    if (
+      state.currentVideoId !== targetVideoId
+      || !state.currentVideoChangedAt
+      || timestamp - state.currentVideoChangedAt < 300
+    ) {
+      return false;
+    }
+
+    const video = getPlayableVideo();
+    if (!video) return false;
+    if (!resetVideoPlaybackToStart(video, { resume: true })) return false;
+
+    clearDailyModeStartReset();
+    armDailyModeSettle(currentVideoId, timestamp);
     resetProgressSyncState(currentVideoId, video, vm, timestamp);
-    logSuccess("player", "daily mode reset target video to start", {
+    logSuccess("player", "daily mode target video reset to start", {
       videoId: currentVideoId,
     });
     updateUi("当前为日常模式：下一集已从开头开始播放");
@@ -6276,19 +6382,7 @@
       videoId: currentVideoId,
       lesson: findCurrentLesson(vm)?.name || "unknown",
     });
-    safeCall(() => {
-      if (typeof video.currentTime === "number") {
-        video.currentTime = 0;
-      }
-      const player = safeCall(() => PAGE.ablePlayerX && PAGE.ablePlayerX("container"));
-      if (player && typeof player.seek === "function") {
-        player.seek(0);
-      }
-      const playResult = video.play();
-      if (playResult && typeof playResult.catch === "function") {
-        playResult.catch(() => { });
-      }
-    });
+    resetVideoPlaybackToStart(video, { resume: true });
     toast("检测到记录进度未完成，已回到开头重试");
     updateUi("进度未完成，重播当前视频");
     return true;
@@ -6361,15 +6455,33 @@
     return true;
   }
 
-  function advanceVideo(vm, advanceMode = resolveAdvanceModeSnapshot(vm)) {
-    const currentVideoId = observeCurrentVideo(vm);
+  function advanceVideo(
+    vm,
+    advanceMode = resolveAdvanceModeSnapshot(vm),
+    currentVideoId = resolveCurrentVideoId(vm),
+  ) {
     if (vm.testDialog || vm.imgDialog) return;
+    const timestamp = now();
     if (advanceMode.dailyMode) {
       clearPendingServerProgressRefresh();
+      const pendingDailyModeReset = getPendingDailyModeStartReset(timestamp);
+      if (pendingDailyModeReset) {
+        updateUi(
+          normalizeVideoId(currentVideoId) === pendingDailyModeReset.targetVideoId
+            ? "当前为日常模式：等待新视频从开头开始播放"
+            : "当前为日常模式：等待切换到下一集",
+        );
+        return;
+      }
+      if (isDailyModeSettling(currentVideoId, timestamp)) {
+        updateUi("当前为日常模式：等待新视频稳定播放");
+        return;
+      }
       if (!isVideoNaturallyFinished(getPlayableVideo())) return;
       jumpToNextLoopVideo(vm, "dailyModeLoop", currentVideoId);
       return;
     }
+    clearDailyModeTransitionState();
 
     if (retryCurrentVideoIfNeeded(vm, currentVideoId, advanceMode)) return;
     if (advanceMode.lesson.recordedComplete && !advanceMode.lesson.serverComplete) {
@@ -7155,6 +7267,8 @@
     }
 
     patchStudyVm(vm);
+    const currentVideoId = observeCurrentVideo(vm);
+    const advanceMode = getAdvanceModeSnapshot(vm);
     if (state.serverProgress.pendingPayload) {
       if (applyServerProgressSnapshot(vm, state.serverProgress.pendingPayload, "deferredQueryStuyInfo")) {
         state.serverProgress.pendingPayload = null;
@@ -7163,7 +7277,6 @@
     closeTransientDialogs(vm);
     ensureVideoState(vm);
     applyDailyModeStartReset(vm);
-    const advanceMode = getAdvanceModeSnapshot(vm);
     syncProgressFromPlayback(vm, "runtimeTick", now(), advanceMode);
     trackTodayCourseWatch(vm);
 
@@ -7179,7 +7292,7 @@
 
     maybeCloseClosingExamLaunchFromSession(state.exam.session, "runtimeTickCached");
     void syncExamSessionFromStorage();
-    advanceVideo(vm, advanceMode);
+    advanceVideo(vm, advanceMode, currentVideoId);
   }
 
   async function bootstrap() {
