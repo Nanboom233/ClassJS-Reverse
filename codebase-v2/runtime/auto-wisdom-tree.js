@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         2026 智慧树自动浇水施肥开花结果 - Enhanced
 // @namespace    auto-wisdom-tree
-// @version      0.3.13
+// @version      0.4.0
 // @description  智慧树是一棵树
 // @match        *://studyvideoh5.zhihuishu.com/*
 // @match        *://onlineexamh5new.zhihuishu.com/*
 // @match        *://studentexambaseh5.zhihuishu.com/*
 // @match        *://exam.zhihuishu.com/*
+// @match        *://qah5.zhihuishu.com/*
 // @run-at       document-start
 // @noframes
 // @grant        unsafeWindow
@@ -39,6 +40,30 @@
     /(^|\.)studentexambaseh5\.zhihuishu\.com$/i,
     /(^|\.)exam\.zhihuishu\.com$/i,
   ];
+  const QAH5_HOST_RE = /(^|\.)qah5\.zhihuishu\.com$/i;
+  const QAH5_COPY_HANDLER_PROPERTIES = ["onselectstart", "oncontextmenu", "oncopy", "oncut", "onpaste"];
+  const QAH5_COPY_EVENT_TYPES = new Set(["selectstart", "contextmenu", "copy", "cut", "paste"]);
+  const QAH5_TELEMETRY_RULES = [
+    /buried-point\.zhihuishu\.com\/gateway\/t\/buriedPoint\/common/i,
+    /collector\.zhihuishu\.com\/public\/collect/i,
+    /collector2c\.zhihuishu\.com\/public\/collect/i,
+    /collector2c\.zhihuishu\.com\/public\/jsonp\/collect/i,
+    /collector2c\.zhihuishu\.com\/public\/kafkaCollect/i,
+  ];
+  const QAH5_DETECT_RULES = [
+    /\/student\/check\/exceptionActionDetail/i,
+  ];
+  const QAH5_SAFE_BUSINESS_RULES = [
+    /creditqa-api\.zhihuishu\.com\/.*\/qa\//i,
+    /\/creditqa\/gateway\/t\/v1\/web\/qa\//i,
+    /\/creditqa\/gateway\/t\/v1\/web\/forbid\//i,
+    /\/getQuestionInfo/i,
+    /\/saveQuestion/i,
+    /\/saveAnswer/i,
+    /\/saveComment/i,
+    /\/qaWebReportService/i,
+  ];
+  const QAH5_COPY_GUARD_SOURCE_RE = /returnvalue\s*=\s*false|preventdefault|clipboard|contextmenu|selectstart|\bcopy\b|\bcut\b|\bpaste\b/i;
 
   const state = {
     config: {
@@ -83,6 +108,24 @@
       installed: false,
       hotkeysInstalled: false,
       strippedCount: 0,
+    },
+    qah5: {
+      propertyGuardsInstalled: false,
+      navigationGuardsInstalled: false,
+      scrubScheduled: false,
+      risk: {
+        events: [],
+        lastHttp422: null,
+        lastBiz1010: null,
+        ableCaptchaPatched: false,
+        zhsMonitorPatched: false,
+        appBridgePatched: false,
+        lastValidate: "",
+        manualValidate: "",
+        suppressedOpenCount: 0,
+        suppressedBridgeCount: 0,
+        suppressedCaptchaCount: 0,
+      },
     },
     progressSync: {
       videoId: null,
@@ -541,6 +584,10 @@
     return EXAM_HOST_RE_LIST.some((rule) => rule.test(PAGE_HOST));
   }
 
+  function isQah5Page() {
+    return QAH5_HOST_RE.test(PAGE_HOST);
+  }
+
   function isDoExaminationRoute() {
     const href = normalizeText(PAGE.location?.href || location.href || "");
     return /\/doexamination\//i.test(href) || normalizeText(state.exam.routeName) === "doExamination";
@@ -778,7 +825,17 @@
   }
 
   function shouldBlockUrl(url) {
-    if (!url || document.readyState === "loading") return null;
+    if (!url) return null;
+    if (!isQah5Page() && document.readyState === "loading") return null;
+    if (isQah5Page()) {
+      if (state.config.blockReportApis && isRuleMatched(url, QAH5_TELEMETRY_RULES) && !isRuleMatched(url, QAH5_SAFE_BUSINESS_RULES)) {
+        return "report";
+      }
+      if (state.config.blockDetectApis && isRuleMatched(url, QAH5_DETECT_RULES)) {
+        return "detect";
+      }
+      return null;
+    }
     if (state.config.blockReportApis && isRuleMatched(url, REPORT_RULES)) {
       return "report";
     }
@@ -920,7 +977,11 @@
         let wrappedListener = listener;
         if (typeof listener === "function") {
           wrappedListener = function (event) {
+            const eventTarget = event?.currentTarget || this;
             if (state.config.antiAntiDebug && isDevtoolsKeyEvent(event)) {
+              return undefined;
+            }
+            if (shouldBypassQah5CopyListener(eventTarget, normalizeText(event?.type).toLowerCase(), listener, event)) {
               return undefined;
             }
             return listener.apply(this, arguments);
@@ -928,7 +989,11 @@
         } else if (typeof listener?.handleEvent === "function") {
           wrappedListener = {
             handleEvent(event) {
+              const eventTarget = event?.currentTarget || event?.target || null;
               if (state.config.antiAntiDebug && isDevtoolsKeyEvent(event)) {
+                return undefined;
+              }
+              if (shouldBypassQah5CopyListener(eventTarget, normalizeText(event?.type).toLowerCase(), listener, event)) {
                 return undefined;
               }
               return listener.handleEvent.call(listener, event);
@@ -941,14 +1006,16 @@
       };
 
       const wrappedAddEventListener = function (type, listener, options) {
-        if (/^key(?:down|press|up)$/i.test(String(type || ""))) {
+        const normalizedType = normalizeText(type).toLowerCase();
+        if (/^key(?:down|press|up)$/i.test(normalizedType) || (isQah5Page() && QAH5_COPY_EVENT_TYPES.has(normalizedType))) {
           return originalAddEventListener.call(this, type, wrapListener(listener), options);
         }
         return originalAddEventListener.call(this, type, listener, options);
       };
 
       const wrappedRemoveEventListener = function (type, listener, options) {
-        if (/^key(?:down|press|up)$/i.test(String(type || "")) && listenerMap.has(listener)) {
+        const normalizedType = normalizeText(type).toLowerCase();
+        if ((/^key(?:down|press|up)$/i.test(normalizedType) || (isQah5Page() && QAH5_COPY_EVENT_TYPES.has(normalizedType))) && listenerMap.has(listener)) {
           return originalRemoveEventListener.call(this, type, listenerMap.get(listener), options);
         }
         return originalRemoveEventListener.call(this, type, listener, options);
@@ -1183,6 +1250,7 @@
             if (clone && typeof clone.text === "function") {
               void clone.text().then((text) => {
                 observeStudyApiResponse(response.url || url, text);
+                observeQah5ApiResponse(response.url || url, response.status, text);
               }).catch(() => { });
             }
           } catch (_error) { }
@@ -1190,6 +1258,7 @@
         });
       }
       const body = buildMockBody(url, kind);
+      noteQah5BlockedRequest(kind, url);
       logDebug("network", `fetch blocked [${kind}]`, url);
       return Promise.resolve(
         new PageResponse(JSON.stringify(body), {
@@ -1250,6 +1319,7 @@
                 ? this.response
                 : "";
             observeStudyApiResponse(this.__awt_url || "", responseText);
+            observeQah5ApiResponse(this.__awt_url || "", Number(this.status || 0), responseText);
           };
           if (typeof this.addEventListener === "function") {
             this.addEventListener("loadend", inspectResponse, { once: true });
@@ -1269,6 +1339,7 @@
 
       const payload = buildMockBody(url, kind);
       const responseText = JSON.stringify(payload);
+      noteQah5BlockedRequest(kind, url);
       logDebug("network", `xhr blocked [${kind}]`, url);
 
       setReadableValue(this, "readyState", 4);
@@ -1317,6 +1388,7 @@
         return originalAjax(...args);
       }
       const payload = buildMockBody(url, kind);
+      noteQah5BlockedRequest(kind, url);
       logDebug("network", `$.ajax blocked [${kind}]`, url);
       setTimeout(() => {
         safeCall(() => typeof options.success === "function" && options.success(payload, "success", createAjaxStub(payload)));
@@ -1373,6 +1445,404 @@
       value: true,
     });
     logOnce("patch-monitor", "success", "network", "MonitorUtil interceptor installed");
+  }
+
+  function isEditableElement(node) {
+    if (!node || typeof node !== "object") return false;
+    const tagName = normalizeText(node.tagName).toLowerCase();
+    if (tagName === "textarea") return true;
+    if (tagName === "input") {
+      const inputType = normalizeText(node.type).toLowerCase();
+      return !["button", "checkbox", "file", "hidden", "image", "radio", "range", "reset", "submit"].includes(inputType);
+    }
+    return Boolean(node.isContentEditable);
+  }
+
+  function isTopLevelQah5CopyTarget(target) {
+    return target === document
+      || target === PAGE
+      || target === PAGE.document
+      || target === document.documentElement
+      || target === document.body;
+  }
+
+  function shouldBypassQah5CopyListener(target, type, listener, event) {
+    if (!isQah5Page() || !QAH5_COPY_EVENT_TYPES.has(type) || !isTopLevelQah5CopyTarget(target)) {
+      return false;
+    }
+    if (type === "paste" && isEditableElement(event?.target)) {
+      return false;
+    }
+    if (type === "selectstart" || type === "contextmenu") {
+      logOnce(`qah5-copy-listener:${type}`, "debug", "qah5", `blocked top-level ${type} listener`);
+      return true;
+    }
+    const source = normalizeText(
+      typeof listener === "function"
+        ? safeCall(() => Function.prototype.toString.call(listener), String(listener))
+        : typeof listener?.handleEvent === "function"
+          ? safeCall(() => Function.prototype.toString.call(listener.handleEvent), String(listener.handleEvent))
+          : "",
+    );
+    if (!source) {
+      return false;
+    }
+    if (QAH5_COPY_GUARD_SOURCE_RE.test(source)) {
+      logOnce(`qah5-copy-listener:${type}`, "debug", "qah5", `blocked top-level ${type} listener`);
+      return true;
+    }
+    return false;
+  }
+
+  function installQah5CopyHandlerGuards() {
+    if (!isQah5Page() || state.qah5.propertyGuardsInstalled) return;
+    state.qah5.propertyGuardsInstalled = true;
+
+    const installPropertyGuard = (target, propertyName) => {
+      if (!target) return;
+      try {
+        let assignedValue = null;
+        Object.defineProperty(target, propertyName, {
+          configurable: true,
+          enumerable: true,
+          get() {
+            return assignedValue;
+          },
+          set(handler) {
+            if (typeof handler !== "function") {
+              assignedValue = handler || null;
+              return;
+            }
+            assignedValue = markWrapped(function awtQah5CopyGuardBypass() {
+              return undefined;
+            });
+            logOnce(`qah5-copy-prop:${propertyName}`, "debug", "qah5", `blocked property guard assignment for ${propertyName}`);
+          },
+        });
+      } catch (error) {
+        logWarn("qah5", `failed to guard ${propertyName}`, error);
+      }
+    };
+
+    QAH5_COPY_HANDLER_PROPERTIES.forEach((propertyName) => {
+      installPropertyGuard(document, propertyName);
+    });
+  }
+
+  function scrubQah5CopyGuards() {
+    if (!isQah5Page()) return;
+    QAH5_COPY_HANDLER_PROPERTIES.forEach((propertyName) => {
+      safeCall(() => {
+        if (typeof document[propertyName] === "function") {
+          document[propertyName] = null;
+        }
+      });
+    });
+  }
+
+  function scheduleQah5CopyGuardScrub() {
+    if (!isQah5Page() || state.qah5.scrubScheduled) return;
+    state.qah5.scrubScheduled = true;
+    setTimeout(() => {
+      state.qah5.scrubScheduled = false;
+      scrubQah5CopyGuards();
+    }, 0);
+  }
+
+  function installQah5NavigationGuards() {
+    if (!isQah5Page() || state.qah5.navigationGuardsInstalled) return;
+    state.qah5.navigationGuardsInstalled = true;
+
+    const patchHistoryMethod = (methodName) => {
+      const original = PAGE.history?.[methodName];
+      if (typeof original !== "function" || original[WRAP_MARK]) return;
+      PAGE.history[methodName] = markWrapped(function awtQah5HistoryHook(...args) {
+        const result = original.apply(this, args);
+        scheduleQah5CopyGuardScrub();
+        return result;
+      });
+    };
+
+    patchHistoryMethod("pushState");
+    patchHistoryMethod("replaceState");
+    PAGE.addEventListener("popstate", scheduleQah5CopyGuardScrub, true);
+    PAGE.addEventListener("hashchange", scheduleQah5CopyGuardScrub, true);
+    document.addEventListener("DOMContentLoaded", scheduleQah5CopyGuardScrub, { once: true });
+  }
+
+  function cloneQah5RiskDetail(detail) {
+    if (!detail || typeof detail !== "object") return detail;
+    const serialized = safeCall(() => JSON.stringify(detail), "");
+    return parseJsonSafe(serialized) || detail;
+  }
+
+  function pushQah5RiskEvent(kind, detail) {
+    if (!isQah5Page()) return null;
+    const entry = {
+      kind,
+      at: now(),
+      detail: cloneQah5RiskDetail(detail),
+    };
+    const events = state.qah5.risk.events;
+    events.push(entry);
+    if (events.length > 50) {
+      events.splice(0, events.length - 50);
+    }
+    logWarn("qah5-risk", kind, entry.detail);
+    return entry;
+  }
+
+  function observeQah5ApiResponse(url, status, bodyText) {
+    if (!isQah5Page()) return;
+    const normalizedUrl = normalizeUrl(url);
+    if (!normalizedUrl) return;
+
+    const payload = parseJsonSafe(bodyText);
+    if (Number(status || 0) === 422) {
+      state.qah5.risk.lastHttp422 = {
+        url: normalizedUrl,
+        status: 422,
+        payload: cloneQah5RiskDetail(payload),
+      };
+      pushQah5RiskEvent("http422", {
+        url: normalizedUrl,
+        status: 422,
+        payload,
+      });
+      return;
+    }
+
+    if (/exceptionActionDetail/i.test(normalizedUrl)) {
+      pushQah5RiskEvent("exceptionActionDetail", {
+        url: normalizedUrl,
+        status: Number(status || 0),
+        code: Number(payload?.code || 0),
+      });
+    }
+
+    if (payload && Number(payload.code) === 1010) {
+      state.qah5.risk.lastBiz1010 = {
+        url: normalizedUrl,
+        code: 1010,
+        msg: normalizeText(payload.msg),
+        payload: cloneQah5RiskDetail(payload),
+      };
+      pushQah5RiskEvent("biz1010", {
+        url: normalizedUrl,
+        code: 1010,
+        msg: normalizeText(payload.msg),
+      });
+    }
+  }
+
+  function shouldSuppressQah5MonitorOpen(type) {
+    if (!isQah5Page() || !state.config.blockDetectApis) return false;
+    const normalizedType = normalizeText(type).toLowerCase();
+    return normalizedType === "blacklist" || normalizedType === "nostudy";
+  }
+
+  function notifySuppressedQah5Hooks(type, hooks) {
+    if (!hooks || typeof hooks !== "object") return;
+    const payload = {
+      suppressed: true,
+      type: normalizeText(type).toLowerCase(),
+      at: now(),
+    };
+    ["verifypassed", "promised", "appeal"].forEach((key) => {
+      if (typeof hooks[key] !== "function") return;
+      setTimeout(() => {
+        safeCall(() => hooks[key](payload));
+      }, 0);
+    });
+  }
+
+  function noteQah5BlockedRequest(kind, url) {
+    if (!isQah5Page()) return;
+    if (kind === "detect") {
+      pushQah5RiskEvent("detectRequest.suppressed", {
+        url: normalizeUrl(url),
+      });
+    }
+  }
+
+  function patchQah5AbleCaptcha() {
+    if (!isQah5Page() || state.qah5.risk.ableCaptchaPatched || typeof PAGE.AbleCaptcha !== "function") return;
+
+    const summarizeAbleCaptchaArgs = (hookName, args) => {
+      if (hookName === "onSuccessAble") {
+        const validate = normalizeText(args[2]?.data?.validate || args[2]?.validate);
+        if (validate) {
+          state.qah5.risk.lastValidate = validate;
+        }
+        return {
+          source: args[0],
+          err: normalizeText(args[1]),
+          validate,
+        };
+      }
+      if (hookName === "onErrorAble") {
+        return {
+          err: normalizeText(args[0]),
+          data: cloneQah5RiskDetail(args[1]),
+        };
+      }
+      if (hookName === "onLoadAble") {
+        return {
+          hasInstance: Boolean(args[0]),
+          result: cloneQah5RiskDetail(args[1]),
+        };
+      }
+      return {
+        args: cloneQah5RiskDetail(args),
+      };
+    };
+
+    const wrapCaptchaOptions = (options) => {
+      if (!options || typeof options !== "object") return options;
+      pushQah5RiskEvent("AbleCaptcha.create", {
+        source: Number(options.source || 0),
+        capType: normalizeText(options.capType),
+        eleCapId: normalizeText(options.eleCapId),
+      });
+      const wrappedOptions = { ...options };
+      ["onSuccessAble", "onErrorAble", "onLoadAble", "onCloseAble", "onFallbackAble"].forEach((hookName) => {
+        if (typeof options[hookName] !== "function") return;
+        wrappedOptions[hookName] = function (...args) {
+          pushQah5RiskEvent(`AbleCaptcha.${hookName}`, summarizeAbleCaptchaArgs(hookName, args));
+          return options[hookName].apply(this, args);
+        };
+      });
+      return wrappedOptions;
+    };
+
+    const createSuppressedCaptchaInstance = (wrappedOptions, manualValidate) => {
+      const instance = {
+        popUp() { },
+        close() { },
+        instance: {
+          destroy() { },
+        },
+      };
+      state.qah5.risk.suppressedCaptchaCount += 1;
+      pushQah5RiskEvent("AbleCaptcha.suppressed", {
+        manualValidate,
+      });
+      state.qah5.risk.manualValidate = "";
+      setTimeout(() => {
+        safeCall(() => typeof wrappedOptions?.onLoadAble === "function" && wrappedOptions.onLoadAble(instance, {
+          suppressed: true,
+          manualValidate: true,
+        }));
+        safeCall(() => typeof wrappedOptions?.onSuccessAble === "function" && wrappedOptions.onSuccessAble(1, "", {
+          data: {
+            validate: manualValidate,
+          },
+          suppressed: true,
+          manualValidate: true,
+        }));
+      }, 0);
+      return instance;
+    };
+
+    const OriginalAbleCaptcha = PAGE.AbleCaptcha;
+    const WrappedAbleCaptcha = new Proxy(OriginalAbleCaptcha, {
+      construct(target, args, newTarget) {
+        if (args.length > 0) {
+          args[0] = wrapCaptchaOptions(args[0]);
+        }
+        const manualValidate = normalizeText(state.qah5.risk.manualValidate);
+        if (state.config.blockDetectApis && manualValidate) {
+          return createSuppressedCaptchaInstance(args[0], manualValidate);
+        }
+        return Reflect.construct(target, args, newTarget);
+      },
+      apply(target, thisArg, args) {
+        if (args.length > 0) {
+          args[0] = wrapCaptchaOptions(args[0]);
+        }
+        const manualValidate = normalizeText(state.qah5.risk.manualValidate);
+        if (state.config.blockDetectApis && manualValidate) {
+          return createSuppressedCaptchaInstance(args[0], manualValidate);
+        }
+        return Reflect.apply(target, thisArg, args);
+      },
+    });
+
+    PAGE.AbleCaptcha = markWrapped(WrappedAbleCaptcha);
+    state.qah5.risk.ableCaptchaPatched = true;
+    logOnce("qah5-ablecaptcha", "success", "qah5", "AbleCaptcha observer installed");
+  }
+
+  function patchQah5ZhsMonitor() {
+    if (!isQah5Page() || state.qah5.risk.zhsMonitorPatched || typeof PAGE.zhsMonitor?.open !== "function") return;
+
+    const originalOpen = PAGE.zhsMonitor.open.bind(PAGE.zhsMonitor);
+    PAGE.zhsMonitor.open = markWrapped(function awtQah5ZhsMonitorOpen(type, params, hooks, ...rest) {
+      const normalizedType = normalizeText(type);
+      pushQah5RiskEvent("zhsMonitor.open", {
+        type: normalizedType,
+        params: cloneQah5RiskDetail(params),
+        hookKeys: hooks && typeof hooks === "object" ? Object.keys(hooks) : [],
+      });
+
+      let wrappedHooks = hooks;
+      if (hooks && typeof hooks === "object") {
+        wrappedHooks = { ...hooks };
+        Object.keys(hooks).forEach((key) => {
+          if (typeof hooks[key] !== "function") return;
+          wrappedHooks[key] = function (...args) {
+            pushQah5RiskEvent(`zhsMonitor.${key}`, {
+              type: normalizedType,
+              args: cloneQah5RiskDetail(args),
+            });
+            return hooks[key].apply(this, args);
+          };
+        });
+      }
+
+      if (shouldSuppressQah5MonitorOpen(normalizedType)) {
+        state.qah5.risk.suppressedOpenCount += 1;
+        pushQah5RiskEvent("zhsMonitor.suppressed", {
+          type: normalizedType,
+          params: cloneQah5RiskDetail(params),
+        });
+        notifySuppressedQah5Hooks(normalizedType, wrappedHooks);
+        return {
+          suppressed: true,
+          type: normalizedType,
+        };
+      }
+
+      return originalOpen(type, params, wrappedHooks, ...rest);
+    });
+
+    state.qah5.risk.zhsMonitorPatched = true;
+    logOnce("qah5-zhsmonitor", "success", "qah5", "zhsMonitor observer installed");
+  }
+
+  function patchQah5AppRiskBridge() {
+    if (!isQah5Page() || state.qah5.risk.appBridgePatched) return;
+    const bridge = PAGE.appBaseJSContextObj;
+    if (!bridge || typeof bridge.goAbnormalPop !== "function" || bridge.goAbnormalPop[WRAP_MARK]) return;
+
+    const originalGoAbnormalPop = bridge.goAbnormalPop.bind(bridge);
+    bridge.goAbnormalPop = markWrapped(function awtQah5GoAbnormalPop(payload, ...rest) {
+      const normalizedPayload = typeof payload === "string" ? parseJsonSafe(payload) || payload : cloneQah5RiskDetail(payload);
+      pushQah5RiskEvent("app.goAbnormalPop", {
+        payload: normalizedPayload,
+      });
+      if (state.config.blockDetectApis) {
+        state.qah5.risk.suppressedBridgeCount += 1;
+        pushQah5RiskEvent("app.goAbnormalPop.suppressed", {
+          payload: normalizedPayload,
+        });
+        return true;
+      }
+      return originalGoAbnormalPop(payload, ...rest);
+    });
+
+    state.qah5.risk.appBridgePatched = true;
+    logOnce("qah5-app-bridge", "success", "qah5", "app abnormal bridge observer installed");
   }
 
   function isStudyVm(candidate) {
@@ -7253,6 +7723,14 @@
     patchSendBeacon();
     installAntiDebugGuards();
 
+    if (isQah5Page()) {
+      patchQah5AbleCaptcha();
+      patchQah5ZhsMonitor();
+      patchQah5AppRiskBridge();
+      scrubQah5CopyGuards();
+      return;
+    }
+
     if (isExamPage()) {
       findHomeworkExamVm();
       handleExamPageRuntime();
@@ -7305,6 +7783,32 @@
     patchFetch();
     patchXhr();
     patchSendBeacon();
+    if (isQah5Page()) {
+      safeCall(() => {
+        PAGE.__awtQah5Risk__ = state.qah5.risk;
+      });
+      installQah5CopyHandlerGuards();
+      installQah5NavigationGuards();
+      scheduleQah5CopyGuardScrub();
+
+      const ready = () => {
+        startRuntimeLoop();
+      };
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", ready, { once: true });
+      } else {
+        ready();
+      }
+
+      logSuccess("bootstrap", "qah5 hooker bootstrapped", {
+        blockReportApis: state.config.blockReportApis,
+        antiAntiDebug: state.config.antiAntiDebug,
+        host: PAGE_HOST,
+      });
+      return;
+    }
+
     if (isStudyPage()) {
       startVmPatchProbe();
     } else if (isExamPage()) {
